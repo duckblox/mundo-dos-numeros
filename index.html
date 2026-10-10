@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="pt-BR">
-
   <!--
     MUNDO DOS NÚMEROS COM O ZECA  ·  guia de leitura deste arquivo
     ================================================================
@@ -27,6 +26,7 @@
       • Salvar no navegador (localStorage) . "Estado salvo"
       • Async/await e Promises .............. função sleep e renderMult → skipCount
       • Matemática de um mundo 3D .......... "CONTINHAS COM MATERIAL DOURADO 3D"
+      • Variáveis, if, while, interpretador  "PARQUE LÓGICO" (renderParque, função rodar)
       • Geração de problemas aleatórios .... genOuro e os render* de cada atividade
     
     COMO EXPERIMENTAR
@@ -43,7 +43,6 @@
       href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>"
     />
     <style>
-
       /* VARIÁVEIS CSS (custom properties): definimos cada cor UMA vez aqui e usamos
          com var(--nome) no resto do CSS. Quer outro tema? Mude só estas linhas!
          Cada operação tem sempre a MESMA cor (previsibilidade ajuda a aprender). */
@@ -58,6 +57,7 @@
         --bal: #3a86ff;
         --pausa: #6c8cff;
         --ouro: #d99a00;
+        --parque: #5b3fd9;
         --home: #3d5a80;
         --shadow: 0 10px 28px rgba(39, 50, 74, 0.13);
       }
@@ -876,6 +876,207 @@
         color: var(--soft);
       }
 
+      /* ===== Parque Lógico: cena 3D à esquerda, "cérebro" do robô à direita ===== */
+      .parqueWrap {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: center;
+      }
+      .cenaBox {
+        flex: 1 1 460px;
+        min-width: 300px;
+      }
+      .cerebro {
+        flex: 0 1 430px;
+        min-width: 300px;
+        background: #fff;
+        border-radius: 24px;
+        padding: 12px;
+        box-shadow: var(--shadow);
+        max-height: 78vh;
+        overflow: auto;
+      }
+      #pk-cv {
+        display: block;
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        touch-action: none;
+        cursor: grab;
+        background: #cfe9ff;
+      }
+      .pnote {
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--soft);
+        margin: 6px 0;
+      }
+      .paleta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 8px 0;
+      }
+      /* Cada cartão usa a variável --cc (cor do conceito), definida pelo JavaScript em cada elemento */
+      .carta {
+        background: var(--cc);
+        color: #fff;
+        font-weight: 800;
+        font-size: 0.8rem;
+        padding: 8px 10px;
+        border-radius: 14px;
+        box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+      }
+      .carta:active {
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+      }
+      .prog {
+        background: #f4f6fc;
+        border-radius: 16px;
+        padding: 8px;
+        min-height: 90px;
+      }
+      .pcard {
+        background: #fff;
+        border-left: 8px solid var(--cc);
+        border-radius: 12px;
+        padding: 6px 8px;
+        margin: 6px 0;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      }
+      /* O cartão em execução ganha um brilho dourado: é a "luz que percorre o programa" */
+      .pcard.run {
+        outline: 4px solid #ffd166;
+        box-shadow: 0 0 18px #ffd166;
+        animation: glow2 0.8s infinite alternate;
+      }
+      .ptopo {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        font-weight: 800;
+        font-size: 0.85rem;
+      }
+      .pic {
+        font-size: 1.3rem;
+      }
+      .psel,
+      .vin {
+        font: inherit;
+        font-size: 0.85rem;
+        font-weight: 800;
+        border: 2px solid #d3d9ee;
+        border-radius: 10px;
+        padding: 3px 6px;
+        background: #fff;
+        color: var(--ink);
+      }
+      .vin {
+        width: 5rem;
+      }
+      .pcond {
+        display: inline-flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      .pctl {
+        margin-left: auto;
+        display: flex;
+        gap: 4px;
+      }
+      .pmini {
+        background: #eef1fb;
+        border-radius: 8px;
+        min-width: 30px;
+        height: 30px;
+        font-weight: 900;
+      }
+      .pinner {
+        margin: 6px 0 2px 14px;
+        padding-left: 8px;
+        border-left: 3px dashed rgba(0, 0, 0, 0.15);
+      }
+      .plab {
+        font-size: 0.75rem;
+        font-weight: 900;
+        color: var(--soft);
+        text-transform: uppercase;
+      }
+      .slotbtn {
+        display: block;
+        width: 100%;
+        background: transparent;
+        border: 2px dashed #c4cbe3;
+        border-radius: 10px;
+        padding: 4px;
+        font-weight: 800;
+        font-size: 0.8rem;
+        color: var(--soft);
+      }
+      .slotbtn.on {
+        background: #fff3c4;
+        border-color: #f5c518;
+        color: #7a5a00;
+      }
+      .vlista {
+        display: grid;
+        gap: 6px;
+      }
+      .vbox {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        border-radius: 12px;
+        padding: 6px 10px;
+        font-weight: 800;
+        font-size: 0.9rem;
+      }
+      .vbox.num {
+        background: #e8eaff;
+        border-left: 6px solid #8b6cff;
+      }
+      .vbox.txt {
+        background: #ffeede;
+        border-left: 6px solid #ff8a5b;
+      }
+      .vlive {
+        margin-left: auto;
+        font-weight: 900;
+      }
+      .vnova {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+        align-items: center;
+      }
+      .pcodigo {
+        background: #1d2540;
+        color: #e8f0ff;
+        border-radius: 12px;
+        padding: 10px;
+        font-size: 0.78rem;
+        line-height: 1.5;
+        overflow: auto;
+        white-space: pre;
+      }
+      .tool:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      @keyframes glow2 {
+        from {
+          box-shadow: 0 0 6px #ffd166;
+        }
+        to {
+          box-shadow: 0 0 20px #ffb703;
+        }
+      }
+
       /* Início */
       .hello h1 {
         font-size: 2.2rem;
@@ -1116,7 +1317,6 @@
     </style>
   </head>
   <body>
-
     <!--
       DUAS CAMADAS DE CANVAS cobrem a tela inteira (ver CSS #bg e #fx):
         • #bg → símbolos de matemática flutuando ao fundo (fica ATRÁS de tudo)
@@ -1133,7 +1333,6 @@
     -->
     <div id="app">
       <header id="top">
-
         <!--
           O Zeca é desenhado com código neste canvas (veja drawMascot no script). O aria-label descreve a imagem para quem usa leitor de tela.
         -->
@@ -1266,6 +1465,8 @@
         sub: "Vamos subtrair! Alimente o Gulosinho e veja o que sobra.",
         mult: "Multiplicar é juntar grupos iguais! Coloque a mesma quantidade em cada bandeja.",
         div: "Dividir é repartir igualzinho! Dê as peças para cada amigo.",
+        parque:
+          "Bem-vindo ao Parque Lógico! Monte cartões para programar o robô. Clique nele para conhecer o corpo dele.",
         ouro: "Vamos armar continhas com o material dourado! Você pode girar as peças com o dedo ou o mouse.",
         tab: "Aqui você descobre os segredos da tabuada. Escolha uma aba!",
         bal: "Estoure o balão com a resposta certa. Sem pressa e sem perder pontos!",
@@ -1506,7 +1707,8 @@
           const m = VALSA.melodia[b];
           if (m != null) notaMusica(NT(m), t, spb * 0.9, "triangle", 0.5); // melodia
           const acorde = VALSA.acorde[VALSA.harmonia[compasso]];
-          if (pos === 0) notaMusica(NT(acorde[0] - 12), t, spb * 0.8, "sine", 0.7); // "oom" (grave)
+          if (pos === 0)
+            notaMusica(NT(acorde[0] - 12), t, spb * 0.8, "sine", 0.7); // "oom" (grave)
           else acorde.forEach((x) => notaMusica(NT(x), t, spb * 0.3, "square", 0.08)); // "pá" (curtinho)
           MUS.proximo += spb;
           MUS.tempo++;
@@ -2002,6 +2204,15 @@
           title: "Hora do Lanche",
           desc: "Reparta igualzinho entre os amigos.",
           render: renderDiv,
+        },
+        parque: {
+          id: "parque",
+          name: "Parque",
+          icon: "🎡",
+          color: "var(--parque)",
+          title: "Parque Lógico",
+          desc: "Programe um robô num parque 3D: variáveis, se e enquanto.",
+          render: renderParque,
         },
         ouro: {
           id: "ouro",
@@ -3564,6 +3775,1554 @@
         enterCol();
       }
 
+      /* ===================== 🎡 PARQUE LÓGICO ===================== */
+      // Aqui a criança PROGRAMA um robô que flutua num parque de diversões 3D.
+      // Ela monta "cartões" (como peças de LEGO) e o robô obedece. Você vai ver:
+      //   • VARIÁVEIS ........ as caixinhas da mochila (energia, passageiros, voltas...)
+      //   • CONDIÇÕES (se) ... decidir com "se ... então ... senão"
+      //   • REPETIÇÃO (while)  "enquanto a condição for verdadeira, repita"
+      //   • INTERPRETADOR .... um programa que executa outro programa, UM PASSO POR VEZ
+      //   • 3D no Canvas ..... o mesmo truque das continhas: projetar pontos 3D em 2D
+      // Os programas são DADOS (listas e objetos), nunca texto executado com eval: é mais seguro.
+
+      // Lugares do parque onde o robô pode flutuar: [x, altura, z] no mundo 3D.
+      const LUGARES = { portão: [-11.5, 2.4, 5], praça: [-1, 2.4, 5], "roda-gigante": [9, 2.4, 3.6] };
+      const CORES_ROBO = {
+        turquesa: "#35c9b7",
+        rosa: "#ff6fa5",
+        amarelo: "#ffc93c",
+        verde: "#5ccf6a",
+        roxo: "#9b7bff",
+        laranja: "#ff9248",
+      };
+      const OPS = ["<", ">", "=", "≠", "≤", "≥"]; // comparações possíveis numa condição
+      const BICHOS = ["🐶", "🐱", "🐰", "🐻", "🦊", "🐼", "🐸", "🐵"]; // passageiros da roda-gigante
+      const MAX_PASSOS = 400; // limite de segurança: depois disso consideramos "laço infinito"
+      const TIPOS = [
+        "ir",
+        "girar",
+        "embarcar",
+        "olho",
+        "cor",
+        "mudar",
+        "somar",
+        "dizer",
+        "parar",
+        "enquanto",
+        "se",
+      ];
+      // Os cartões disponíveis. Cada tipo de conceito tem sempre a mesma cor (laranja = ação,
+      // roxo = variáveis, verde-água = decisão, azul = repetição, rosa = falar).
+      const CARTAS = [
+        { tipo: "ir", icone: "🚀", nome: "ir para", cor: "#ff8a5b" },
+        { tipo: "girar", icone: "🎡", nome: "girar a roda", cor: "#ff8a5b" },
+        { tipo: "embarcar", icone: "👥", nome: "embarcar passageiro", cor: "#ff8a5b" },
+        { tipo: "olho", icone: "👁", nome: "olho", cor: "#ff8a5b" },
+        { tipo: "cor", icone: "🎨", nome: "cor", cor: "#ff8a5b" },
+        { tipo: "mudar", icone: "📦", nome: "mudar caixa", cor: "#8b6cff" },
+        { tipo: "somar", icone: "➕", nome: "somar na caixa", cor: "#8b6cff" },
+        { tipo: "enquanto", icone: "🔁", nome: "enquanto", cor: "#3a86ff" },
+        { tipo: "parar", icone: "🛑", nome: "parar o laço", cor: "#3a86ff" },
+        { tipo: "se", icone: "🔀", nome: "se ... senão", cor: "#16b8a6" },
+        { tipo: "dizer", icone: "💬", nome: "dizer", cor: "#ff5d8f" },
+      ];
+      // Missões: "ok" recebe o resultado da execução (variáveis finais, tipos de cartão usados...)
+      // e devolve verdadeiro se a missão foi cumprida. "exemplo" monta um programa de ajuda.
+      const MISSOES = [
+        {
+          id: "m1",
+          titulo: "Gire a roda 3 vezes",
+          dica: "Primeiro leve o robô até a roda-gigante, depois gire 3 voltas.",
+          ok: (r) => r.v.voltas >= 3,
+          exemplo: () => [
+            ["ir", { lugar: "roda-gigante" }],
+            ["girar", { voltas: 3 }],
+          ],
+        },
+        {
+          id: "m2",
+          titulo: "Embarque 4 passageiros com enquanto",
+          dica: "Use 'enquanto passageiros < 4' e coloque 'embarcar passageiro' dentro.",
+          ok: (r) => r.v.passageiros >= 4 && r.usou.has("enquanto"),
+          exemplo: () => [
+            ["ir", { lugar: "roda-gigante" }],
+            ["enquanto", { cond: { a: "passageiros", op: "<", b: "n:4" } }, [["embarcar", {}]]],
+            ["girar", { voltas: 1 }],
+          ],
+        },
+        {
+          id: "m3",
+          titulo: "Gire até a energia acabar",
+          dica: "Cada volta gasta 1 de energia. 'enquanto energia > 0' pára sozinho quando chegar a zero!",
+          ok: (r) => r.v.energia === 0 && r.v.voltas >= 1 && r.usou.has("enquanto") && r.terminou,
+          exemplo: () => [
+            ["ir", { lugar: "roda-gigante" }],
+            ["enquanto", { cond: { a: "energia", op: ">", b: "n:0" } }, [["girar", { voltas: 1 }]]],
+          ],
+        },
+        {
+          id: "m4",
+          titulo: "Feche o olho quando tiver 4 passageiros",
+          dica: "Use 'se passageiros ≥ 4 então olho fechado'.",
+          ok: (r) => r.v.olho === "fechado" && r.v.passageiros >= 4 && r.usou.has("se"),
+          exemplo: () => [
+            ["ir", { lugar: "roda-gigante" }],
+            ["enquanto", { cond: { a: "passageiros", op: "<", b: "n:4" } }, [["embarcar", {}]]],
+            ["se", { cond: { a: "passageiros", op: "≥", b: "n:4" } }, [["olho", { valor: "fechado" }]], []],
+          ],
+        },
+        {
+          id: "m5",
+          titulo: "Saia do laço com 'parar'",
+          dica: "Dentro do enquanto, use 'se voltas ≥ 3 então parar o laço'.",
+          ok: (r) => r.usou.has("parar") && r.usou.has("enquanto") && r.terminou && r.v.voltas >= 1,
+          exemplo: () => [
+            ["ir", { lugar: "roda-gigante" }],
+            [
+              "enquanto",
+              { cond: { a: "energia", op: ">", b: "n:0" } },
+              [
+                ["girar", { voltas: 1 }],
+                ["se", { cond: { a: "voltas", op: "≥", b: "n:3" } }, [["parar", {}]], []],
+              ],
+            ],
+          ],
+        },
+      ];
+
+      // ---- Validação: transforma dados "de fora" (salvos no navegador) em cartões seguros ----
+      // Nunca confie em dados que vêm de fora! Aqui só copiamos campos conhecidos e com valores válidos.
+      let _bid = 0;
+      const novoId = () => "b" + _bid++;
+      const ehOperando = (s) =>
+        typeof s === "string" && /^(n:-?\d{1,4}|t:[\p{L}]{1,12}|v:[\p{L}\p{N}_]{1,12})$/u.test(s);
+      const limparCond = (c) => ({
+        a: c && typeof c.a === "string" ? c.a.slice(0, 12) : "passageiros",
+        op: c && OPS.includes(c.op) ? c.op : "<",
+        b: c && ehOperando(c.b) ? c.b : "n:4",
+      });
+      function limparLista(l, prof = 0) {
+        if (!Array.isArray(l) || prof > 4) return [];
+        return l
+          .filter((b) => b && TIPOS.includes(b.tipo))
+          .slice(0, 40)
+          .map((b) => {
+            const o = { id: novoId(), tipo: b.tipo };
+            if (b.tipo === "ir") o.lugar = LUGARES[b.lugar] ? b.lugar : "roda-gigante";
+            if (b.tipo === "girar") o.voltas = Math.max(1, Math.min(5, parseInt(b.voltas, 10) || 1));
+            if (b.tipo === "olho") o.valor = b.valor === "fechado" ? "fechado" : "aberto";
+            if (b.tipo === "cor") o.valor = CORES_ROBO[b.valor] ? b.valor : "turquesa";
+            if (b.tipo === "mudar") {
+              o.variavel = String(b.variavel || "energia").slice(0, 12);
+              o.valor = ehOperando(b.valor) ? b.valor : "n:0";
+            }
+            if (b.tipo === "somar") {
+              o.variavel = String(b.variavel || "voltas").slice(0, 12);
+              o.n = Math.max(-9, Math.min(99, parseInt(b.n, 10) || 1));
+            }
+            if (b.tipo === "dizer") o.texto = String(b.texto || "Olá!").slice(0, 24);
+            if (b.tipo === "enquanto") {
+              o.cond = limparCond(b.cond);
+              o.corpo = limparLista(b.corpo, prof + 1);
+            }
+            if (b.tipo === "se") {
+              o.cond = limparCond(b.cond);
+              o.entao = limparLista(b.entao, prof + 1);
+              o.senao = limparLista(b.senao, prof + 1);
+            }
+            return o;
+          });
+      }
+      // Cria um cartão novo com valores iniciais simpáticos.
+      function novoBloco(tipo) {
+        const base = {
+          ir: { lugar: "roda-gigante" },
+          girar: { voltas: 1 },
+          embarcar: {},
+          olho: { valor: "fechado" },
+          cor: { valor: "rosa" },
+          mudar: { variavel: "energia", valor: "n:10" },
+          somar: { variavel: "passageiros", n: 1 },
+          dizer: { texto: "Olá!" },
+          parar: {},
+          enquanto: { cond: { a: "passageiros", op: "<", b: "n:4" }, corpo: [] },
+          se: { cond: { a: "energia", op: "<", b: "n:4" }, entao: [], senao: [] },
+        }[tipo];
+        return limparLista([{ tipo, ...JSON.parse(JSON.stringify(base)) }])[0];
+      }
+      const contarBlocos = (l) =>
+        l.reduce(
+          (n, b) =>
+            n + 1 + contarBlocos(b.corpo || []) + contarBlocos(b.entao || []) + contarBlocos(b.senao || []),
+          0,
+        );
+      const todasListas = (l, acc = []) => {
+        acc.push(l);
+        l.forEach((b) => ["corpo", "entao", "senao"].forEach((k) => b[k] && todasListas(b[k], acc)));
+        return acc;
+      };
+      const tiposUsados = (l, s = new Set()) => {
+        l.forEach((b) => {
+          s.add(b.tipo);
+          ["corpo", "entao", "senao"].forEach((k) => b[k] && tiposUsados(b[k], s));
+        });
+        return s;
+      };
+
+      function renderParque(stage) {
+        const m = MODS.parque,
+          { body } = shell(stage, m, { noLevels: true });
+        body.style.setProperty("--c", m.color);
+        const sid = SID;
+
+        // ===== 1. DADOS DO PROGRAMA E DO MUNDO =====
+        // "inicial" = valores com que o robô COMEÇA toda vez que apertamos Executar.
+        // "vars" = valores AO VIVO durante a execução (a mochila do robô).
+        const inicial = { passageiros: 0, voltas: 0, energia: 10, olho: "aberto", cor: "turquesa" };
+        const nomesPadrao = ["passageiros", "voltas", "energia", "olho", "cor"];
+        let custom = []; // nomes das caixas criadas pela criança
+        let programa = [],
+          slotAtivo = null,
+          vars = { ...inicial };
+        try {
+          const sv = S.parque;
+          if (sv && Array.isArray(sv.programa)) programa = limparLista(sv.programa);
+          if (sv && sv.vars)
+            Object.keys(sv.vars)
+              .slice(0, 8)
+              .forEach((n) => {
+                if (/^[\p{L}_][\p{L}\p{N}_]{0,11}$/u.test(n) && !nomesPadrao.includes(n)) {
+                  custom.push(n);
+                  inicial[n] = parseInt(sv.vars[n], 10) || 0;
+                }
+              });
+          if (sv && sv.base)
+            ["passageiros", "voltas", "energia"].forEach((n) => {
+              if (Number.isFinite(sv.base[n])) inicial[n] = Math.max(0, Math.min(99, sv.base[n]));
+            });
+        } catch (e) {}
+        slotAtivo = programa;
+        const todasVars = () => [...nomesPadrao, ...custom];
+        const salvarTudo = () => {
+          S.parque = {
+            programa,
+            vars: Object.fromEntries(custom.map((n) => [n, inicial[n]])),
+            base: { passageiros: inicial.passageiros, voltas: inicial.voltas, energia: inicial.energia },
+          };
+          save();
+        };
+
+        const robo = {
+          x: LUGARES.praça[0],
+          y: LUGARES.praça[1],
+          z: LUGARES.praça[2],
+          alvo: LUGARES.praça.slice(),
+          lugar: "praça",
+          fala: null,
+          tela: null,
+          tonto: 0,
+        };
+        const roda = { angulo: 0, alvo: 0, loucaAte: 0 };
+        let lampada = null; // null (apagada), "verde" (condição verdadeira) ou "vermelha" (falsa)
+        let noite = 0,
+          noiteAlvo = 0;
+        let aba = "regras",
+          missao = -1;
+        const feitas = () => (Array.isArray(S.parqueFeitas) ? S.parqueFeitas : (S.parqueFeitas = []));
+
+        // ===== 2. INTERPRETADOR: executa os cartões UM PASSO POR VEZ =====
+        // Uma função "generator" (function*) pode PAUSAR com yield e continuar depois.
+        // A cada yield devolvemos "o que acabou de acontecer"; a interface anima e acende o cartão.
+        let ctx = null; // estado da execução atual
+        const valorDe = (o) =>
+          o.startsWith("n:") ? Number(o.slice(2)) : o.startsWith("t:") ? o.slice(2) : (vars[o.slice(2)] ?? 0);
+        function avaliar(c) {
+          const a = vars[c.a] ?? 0,
+            b = valorDe(c.b);
+          if (c.op === "=") return a === b;
+          if (c.op === "≠") return a !== b;
+          if (typeof a !== "number" || typeof b !== "number") return false; // texto não se compara com < >
+          return { "<": a < b, ">": a > b, "≤": a <= b, "≥": a >= b }[c.op];
+        }
+        // Aplica UMA ação ao mundo. Devolve a duração da animação, ou uma "falha" gentil.
+        function aplicar(b) {
+          const noRoda = robo.lugar === "roda-gigante";
+          switch (b.tipo) {
+            case "ir":
+              if (vars.olho === "fechado") return { falha: "olho" };
+              if (vars.energia <= 0) return { falha: "energia" };
+              vars.energia--;
+              robo.lugar = b.lugar;
+              robo.alvo = LUGARES[b.lugar].slice();
+              return { dur: 1000 };
+            case "girar":
+              if (!noRoda) return { falha: "lugar" };
+              if (vars.energia < b.voltas) return { falha: "energia" };
+              vars.energia -= b.voltas;
+              vars.voltas += b.voltas;
+              roda.alvo += b.voltas * 2 * Math.PI;
+              return { dur: 800 * b.voltas + 200 };
+            case "embarcar":
+              if (!noRoda) return { falha: "lugar" };
+              vars.passageiros++;
+              return { dur: 600 };
+            case "olho":
+              vars.olho = b.valor;
+              return { dur: 400 };
+            case "cor":
+              vars.cor = b.valor;
+              return { dur: 400 };
+            case "mudar":
+              if (!(b.variavel in vars)) return { falha: "caixa", nome: b.variavel };
+              vars[b.variavel] = valorDe(b.valor);
+              return { dur: 400 };
+            case "somar":
+              if (!(b.variavel in vars)) return { falha: "caixa", nome: b.variavel };
+              vars[b.variavel] = (Number(vars[b.variavel]) || 0) + b.n;
+              return { dur: 400 };
+            case "dizer":
+              robo.fala = { texto: b.texto, ate: performance.now() + 2400 };
+              return { dur: 1000 };
+          }
+          return { dur: 300 };
+        }
+        // Registra o passo e vigia o limite de segurança contra laços infinitos.
+        function passo(ev) {
+          if (++ctx.passos > MAX_PASSOS) {
+            ctx.fim = true;
+            ctx.estourou = true;
+          }
+          return ev;
+        }
+        function* rodar(lista) {
+          for (const b of lista) {
+            if (ctx.fim) return;
+            if (b.tipo === "enquanto") {
+              ctx.usou.add("enquanto");
+              while (true) {
+                const ok = avaliar(b.cond); // 1) pergunta: a condição ainda é verdadeira?
+                yield passo({ id: b.id, kind: "cond", valor: ok, lamp: true, cond: b.cond, dur: 600 });
+                if (ctx.fim) return;
+                if (!ok) break; // 2) falsa: sai do laço
+                yield* rodar(b.corpo); // 3) verdadeira: executa o corpo e volta ao passo 1
+                if (ctx.fim) return;
+                if (ctx.sair) {
+                  ctx.sair = false;
+                  break;
+                } // "parar o laço"
+              }
+            } else if (b.tipo === "se") {
+              ctx.usou.add("se");
+              const ok = avaliar(b.cond);
+              yield passo({ id: b.id, kind: "cond", valor: ok, cond: b.cond, dur: 600 });
+              if (ctx.fim) return;
+              yield* rodar(ok ? b.entao : b.senao);
+              if (ctx.fim || ctx.sair) return;
+            } else if (b.tipo === "parar") {
+              ctx.usou.add("parar");
+              ctx.sair = true;
+              yield passo({ id: b.id, kind: "acao", dur: 400 });
+              return;
+            } else {
+              ctx.usou.add(b.tipo);
+              const r = aplicar(b);
+              yield passo({ id: b.id, kind: "acao", ...r });
+              if (r.falha) {
+                ctx.fim = true;
+                ctx.falha = r;
+                return;
+              }
+              if (ctx.fim) return;
+            }
+            if (ctx.sair) return;
+          }
+        }
+
+        // ===== 3. CONTROLE DA EXECUÇÃO (executar, pausar, passo, freio) =====
+        let gen = null,
+          rodando = false,
+          pausado = false,
+          aguardando = false,
+          timer = null;
+        const vel = () => [1.8, 1, 0.25][S.parqueVel ?? 1];
+        function reiniciarMundo() {
+          vars = { ...inicial };
+          robo.lugar = "praça";
+          robo.alvo = LUGARES.praça.slice();
+          robo.fala = null;
+          robo.tonto = 0;
+          roda.alvo = roda.angulo;
+          roda.loucaAte = 0;
+          lampada = null;
+          marcar(null);
+          mochilaAoVivo();
+        }
+        function executar() {
+          clearTimeout(timer);
+          reiniciarMundo();
+          ctx = { passos: 0, usou: new Set(), fim: false, sair: false, estourou: false, falha: null };
+          gen = rodar(programa);
+          rodando = true;
+          pausado = false;
+          aguardando = false;
+          SFX.good();
+          say("Lá vamos nós!", "happy");
+          botoes();
+          passoAdiante();
+        }
+        function passoAdiante() {
+          if (!rodando) return;
+          const r = gen.next();
+          if (r.done) return terminar("fim");
+          const ev = r.value;
+          mostrar(ev);
+          if (ev.falha || ctx.estourou) return terminar(ev.falha ? "falha" : "estouro", ev);
+          timer = setTimeout(
+            () => {
+              if (sid !== SID || !rodando) return;
+              if (pausado) {
+                aguardando = true;
+                return;
+              }
+              passoAdiante();
+            },
+            (ev.dur || 400) * vel(),
+          );
+        }
+        function mostrar(ev) {
+          marcar(ev.id);
+          if (ev.kind === "cond") {
+            if (ev.lamp) lampada = ev.valor ? "verde" : "vermelha";
+            const c = ev.cond;
+            info(
+              `Pergunta: ${c.a} (${vars[c.a] ?? 0}) ${c.op} ${String(valorDe(c.b))}?  →  ${ev.valor ? "SIM ✅" : "NÃO ❌"}`,
+            );
+            ev.valor ? SFX.pick() : SFX.oops();
+          } else SFX.count(ctx.passos);
+          mochilaAoVivo();
+        }
+        // "ev" é o último evento: nas falhas ele traz o motivo (energia, lugar, olho ou caixa).
+        function terminar(motivo, ev) {
+          rodando = false;
+          clearTimeout(timer);
+          marcar(null);
+          const v = vars;
+          if (motivo === "estouro") {
+            roda.loucaAte = performance.now() + 1800;
+            robo.tonto = performance.now() + 2500;
+            SFX.oops();
+            say(
+              "Uau, fiquei tonto! 😵 O laço nunca parava. Mude a condição ou use o cartão 'parar o laço'.",
+              "think",
+            );
+            info("🛑 Freio de emergência automático: passos demais!");
+          } else if (motivo === "falha") {
+            const f = ev || {};
+            SFX.oops();
+            const msg = {
+              energia: () => "Fiquei sem energia 🔋! Use 'somar na caixa' para recarregar.",
+              lugar: () => "Preciso estar na roda-gigante! Use o cartão 'ir para' antes.",
+              olho: () => "Estou de olho fechado e não enxergo o caminho! Abra o olho primeiro.",
+              caixa: () => `Não achei a caixa "${f.nome}" na mochila.`,
+            }[f.falha]();
+            say(msg, "think");
+            info("💡 " + msg);
+          } else if (motivo === "freio") {
+            say("Freio puxado! Tudo parado.", "happy");
+            info("🛑 Freio de emergência!");
+          } else {
+            const r = { v, usou: ctx.usou, terminou: true };
+            info(
+              `✅ Programa terminado! passageiros = ${v.passageiros}, voltas = ${v.voltas}, energia = ${v.energia}`,
+            );
+            conferirMissao(r);
+          }
+          botoes();
+        }
+        function conferirMissao(r) {
+          if (missao < 0) {
+            say("Programa terminado! Que tal escolher uma missão?", "happy");
+            return;
+          }
+          const mi = MISSOES[missao];
+          if (mi.ok(r)) {
+            if (!feitas().includes(mi.id)) {
+              feitas().push(mi.id);
+              save();
+            }
+            confetti(120);
+            win("parque", `Missão cumprida: ${mi.titulo}!`);
+            missoes();
+          } else say("Quase! " + mi.dica, "think");
+        }
+        const pausarOuContinuar = () => {
+          if (!rodando) return;
+          pausado = !pausado;
+          if (!pausado && aguardando) {
+            aguardando = false;
+            passoAdiante();
+          }
+          botoes();
+        };
+        const umPasso = () => {
+          if (!rodando) {
+            executar();
+            pausado = true;
+            botoes();
+            return;
+          } // começa já pausado após o 1º passo
+          pausado = true;
+          clearTimeout(timer);
+          aguardando = false;
+          passoAdiante();
+          botoes();
+        };
+        const freio = () => {
+          if (rodando) terminar("freio");
+        };
+
+        // ===== 4. PAINEL: ABAS (Corpo, Mochila, Regras, Código) =====
+        body.innerHTML = `<div class="chips" id="pk-miss"></div>
+        <div class="parqueWrap">
+          <div class="cenaBox"><canvas id="pk-cv"></canvas><div class="tools" id="pk-ctl"></div><div class="oinfo" id="pk-info"></div></div>
+          <div class="cerebro"><div class="chips" id="pk-abas"></div><div id="pk-painel"></div></div>
+        </div>`;
+        const info = (t) => {
+          $("#pk-info", body).textContent = t;
+        };
+        info("Monte um programa na aba 🧠 Regras e aperte ▶ Executar. Clique no robô para ver o corpo dele!");
+
+        function missoes() {
+          const c = $("#pk-miss", body);
+          c.innerHTML = "";
+          const livre = el("button", "chip" + (missao < 0 ? " on" : ""), "🎨 Modo livre");
+          livre.onclick = () => {
+            missao = -1;
+            SFX.click();
+            missoes();
+            say("Modo livre: invente o que quiser!", "happy");
+          };
+          c.append(livre);
+          MISSOES.forEach((mi, i) => {
+            const b = el(
+              "button",
+              "chip" + (missao === i ? " on" : ""),
+              `${feitas().includes(mi.id) ? "✅" : "🎯"} ${mi.titulo}`,
+            );
+            b.onclick = () => {
+              missao = i;
+              SFX.click();
+              missoes();
+              say(mi.dica, "happy");
+              info("🎯 " + mi.titulo + " — " + mi.dica);
+            };
+            c.append(b);
+          });
+        }
+        function abas() {
+          const c = $("#pk-abas", body);
+          c.innerHTML = "";
+          [
+            ["corpo", "👁 Corpo"],
+            ["mochila", "🎒 Mochila"],
+            ["regras", "🧠 Regras"],
+            ["codigo", "💻 Código"],
+          ].forEach(([id, l]) => {
+            const b = el("button", "chip" + (aba === id ? " on" : ""), l);
+            b.onclick = () => {
+              aba = id;
+              SFX.click();
+              abas();
+              painel();
+            };
+            c.append(b);
+          });
+        }
+        function painel() {
+          const p = $("#pk-painel", body);
+          p.innerHTML = "";
+          ({ corpo: painelCorpo, mochila: painelMochila, regras: painelRegras, codigo: painelCodigo })[aba](
+            p,
+          );
+        }
+
+        // --- Corpo: o robô tem ESTADOS (olho, cor) que mudam o que ele consegue fazer ---
+        function painelCorpo(p) {
+          p.innerHTML = `<div class="pnote">O robô tem um <b>estado</b>: olho e cor. Tente deixar o olho fechado e mandar o robô ir a algum lugar: ele não enxerga o caminho!</div>`;
+          const o = el("div", "chips");
+          o.append(el("span", "pnote", "👁 Olho no começo:"));
+          ["aberto", "fechado"].forEach((v) => {
+            const b = el(
+              "button",
+              "chip" + (inicial.olho === v ? " on" : ""),
+              v === "aberto" ? "👀 aberto" : "😑 fechado",
+            );
+            b.onclick = () => {
+              inicial.olho = v;
+              vars.olho = v;
+              SFX.click();
+              painel();
+            };
+            o.append(b);
+          });
+          const c = el("div", "chips");
+          c.append(el("span", "pnote", "🎨 Cor:"));
+          Object.keys(CORES_ROBO).forEach((v) => {
+            const b = el("button", "chip" + (inicial.cor === v ? " on" : ""), v);
+            b.onclick = () => {
+              inicial.cor = v;
+              vars.cor = v;
+              SFX.click();
+              painel();
+            };
+            c.append(b);
+          });
+          p.append(o, c);
+        }
+        // --- Mochila: caixas com etiqueta = VARIÁVEIS ---
+        function painelMochila(p) {
+          p.innerHTML = `<div class="pnote">Cada caixa guarda um valor. <span class="vbox num" style="display:inline-block;padding:2px 8px">número</span> <span class="vbox txt" style="display:inline-block;padding:2px 8px">texto</span>. O valor <b>ao vivo</b> muda enquanto o programa roda.</div>`;
+          const lista = el("div", "vlista");
+          p.append(lista);
+          todasVars().forEach((n) => {
+            const num = typeof inicial[n] === "number";
+            const r = el("div", "vbox " + (num ? "num" : "txt"));
+            r.append(el("b", "", ""), el("span", "vlive", ""));
+            r.firstChild.textContent = n;
+            r.lastChild.dataset.v = n;
+            if (num) {
+              const i = el("input", "vin");
+              i.type = "number";
+              i.min = 0;
+              i.max = 99;
+              i.value = inicial[n];
+              i.setAttribute("aria-label", "valor inicial de " + n);
+              i.oninput = () => {
+                inicial[n] = Math.max(0, Math.min(99, parseInt(i.value, 10) || 0));
+                salvarTudo();
+              };
+              r.append(el("small", "", "começa em"), i);
+            }
+            if (custom.includes(n)) {
+              const d = el("button", "tool", "✕");
+              d.setAttribute("aria-label", "apagar caixa " + n);
+              d.onclick = () => {
+                custom = custom.filter((x) => x !== n);
+                delete inicial[n];
+                delete vars[n];
+                salvarTudo();
+                painel();
+              };
+              r.append(d);
+            }
+            lista.append(r);
+          });
+          const f = el("div", "vnova");
+          f.innerHTML = `<input id="pk-nn" class="vin" maxlength="12" placeholder="nome da caixa" aria-label="nome da nova caixa" style="width:9rem"> <input id="pk-nv" class="vin" type="number" min="0" max="99" value="0" aria-label="valor inicial"> <button class="tool" id="pk-nb">📦 Criar caixa</button>`;
+          p.append(f);
+          $("#pk-nb", p).onclick = () => {
+            const n = $("#pk-nn", p).value.trim();
+            if (!/^[\p{L}_][\p{L}\p{N}_]{0,11}$/u.test(n))
+              return say(
+                "O nome precisa ter só letras, números ou _ (até 12) e não pode começar com número.",
+                "think",
+              );
+            if (todasVars().includes(n)) return say("Já existe uma caixa com esse nome!", "think");
+            if (custom.length >= 6) return say("Chega de caixas por enquanto: são 6 no máximo.", "think");
+            custom.push(n);
+            inicial[n] = Math.max(0, Math.min(99, parseInt($("#pk-nv", p).value, 10) || 0));
+            vars[n] = inicial[n];
+            SFX.star();
+            salvarTudo();
+            painel();
+          };
+          mochilaAoVivo();
+        }
+        function mochilaAoVivo() {
+          body.querySelectorAll(".vlive").forEach((s) => {
+            const n = s.dataset.v;
+            s.textContent = "agora: " + (vars[n] ?? "?");
+          });
+        }
+
+        // --- Regras: a paleta de cartões + o programa montado ---
+        const sel = (opcoes, valor, fn) => {
+          const s = el("select", "psel");
+          if (!opcoes.some(([v]) => v === valor)) opcoes = [[valor, valor], ...opcoes]; // mantém valores antigos visíveis
+          opcoes.forEach(([v, l]) => {
+            const o = document.createElement("option");
+            o.value = v;
+            o.textContent = l;
+            if (v === valor) o.selected = true;
+            s.append(o);
+          });
+          s.onchange = () => {
+            fn(s.value);
+            salvarTudo();
+            codigoAtualiza();
+          };
+          return s;
+        };
+        const opVars = () => todasVars().map((n) => [n, n]);
+        const opOperando = () => [
+          ...Array.from({ length: 13 }, (_, i) => ["n:" + i, String(i)]),
+          ["n:20", "20"],
+          ["t:aberto", "“aberto”"],
+          ["t:fechado", "“fechado”"],
+          ...todasVars().map((n) => ["v:" + n, "📦 " + n]),
+        ];
+        const condUI = (c) => {
+          const d = el("span", "pcond");
+          d.append(
+            sel(opVars(), c.a, (v) => (c.a = v)),
+            sel(
+              OPS.map((o) => [o, o]),
+              c.op,
+              (v) => (c.op = v),
+            ),
+            sel(opOperando(), c.b, (v) => (c.b = v)),
+          );
+          return d;
+        };
+        const txt = (t) => el("span", "ptxt", t);
+        function painelRegras(p) {
+          const pal = el("div", "paleta");
+          CARTAS.forEach((c) => {
+            const b = el("button", "carta", `${c.icone} ${c.nome}`);
+            b.style.setProperty("--cc", c.cor);
+            b.onclick = () => adicionar(c.tipo);
+            pal.append(b);
+          });
+          const prog = el("div", "prog");
+          prog.id = "pk-prog";
+          const rodape = el("div", "tools");
+          const lp = el("button", "tool", "🗑 Limpar tudo");
+          lp.onclick = () => {
+            programa.length = 0;
+            slotAtivo = programa;
+            salvarTudo();
+            SFX.click();
+            painel();
+          };
+          const ex = el("button", "tool", "💡 Ver um exemplo");
+          ex.onclick = exemplo;
+          rodape.append(lp, ex);
+          p.append(
+            el(
+              "div",
+              "pnote",
+              "Toque nos cartões para montar o programa. Eles entram onde estiver o botão <b>＋ aqui</b> aceso.",
+            ),
+            pal,
+            prog,
+            rodape,
+          );
+          desenharLista(programa, prog);
+        }
+        function desenharLista(lista, ctn) {
+          lista.forEach((b, i) => ctn.append(cartao(b, lista, i)));
+          const a = el("button", "slotbtn" + (slotAtivo === lista ? " on" : ""), "＋ aqui");
+          a.onclick = () => {
+            slotAtivo = lista;
+            SFX.click();
+            painel();
+          };
+          ctn.append(a);
+        }
+        function cartao(b, lista, i) {
+          const info_ = CARTAS.find((c) => c.tipo === b.tipo);
+          const w = el("div", "pcard");
+          w.style.setProperty("--cc", info_.cor);
+          w.dataset.bid = b.id;
+          const topo = el("div", "ptopo");
+          topo.append(el("span", "pic", info_.icone));
+          if (b.tipo === "ir")
+            topo.append(
+              txt("ir para"),
+              sel(
+                Object.keys(LUGARES).map((l) => [l, l]),
+                b.lugar,
+                (v) => (b.lugar = v),
+              ),
+            );
+          if (b.tipo === "girar")
+            topo.append(
+              txt("girar a roda"),
+              sel(
+                [1, 2, 3, 4, 5].map((n) => [String(n), String(n)]),
+                String(b.voltas),
+                (v) => (b.voltas = +v),
+              ),
+              txt("volta(s)"),
+            );
+          if (b.tipo === "embarcar") topo.append(txt("embarcar 1 passageiro"));
+          if (b.tipo === "olho")
+            topo.append(
+              txt("olho"),
+              sel(
+                [
+                  ["aberto", "👀 aberto"],
+                  ["fechado", "😑 fechado"],
+                ],
+                b.valor,
+                (v) => (b.valor = v),
+              ),
+            );
+          if (b.tipo === "cor")
+            topo.append(
+              txt("cor"),
+              sel(
+                Object.keys(CORES_ROBO).map((c) => [c, c]),
+                b.valor,
+                (v) => (b.valor = v),
+              ),
+            );
+          if (b.tipo === "mudar")
+            topo.append(
+              txt("mudar"),
+              sel(opVars(), b.variavel, (v) => (b.variavel = v)),
+              txt("para"),
+              sel(opOperando(), b.valor, (v) => (b.valor = v)),
+            );
+          if (b.tipo === "somar")
+            topo.append(
+              txt("somar"),
+              sel(
+                Array.from({ length: 16 }, (_, k) => [String(k - 5), String(k - 5)]),
+                String(b.n),
+                (v) => (b.n = +v),
+              ),
+              txt("em"),
+              sel(opVars(), b.variavel, (v) => (b.variavel = v)),
+            );
+          if (b.tipo === "dizer") {
+            const t = el("input", "vin");
+            t.value = b.texto;
+            t.maxLength = 24;
+            t.setAttribute("aria-label", "o que o robô diz");
+            t.oninput = () => {
+              b.texto = t.value.slice(0, 24);
+              salvarTudo();
+              codigoAtualiza();
+            };
+            topo.append(txt("dizer"), t);
+          }
+          if (b.tipo === "parar") topo.append(txt("parar o laço"));
+          if (b.tipo === "enquanto") topo.append(txt("enquanto"), condUI(b.cond), txt("faça:"));
+          if (b.tipo === "se") topo.append(txt("se"), condUI(b.cond), txt("então:"));
+          const ctl = el("span", "pctl");
+          [
+            ["▲", -1],
+            ["▼", 1],
+          ].forEach(([s, d]) => {
+            const x = el("button", "pmini", s);
+            x.setAttribute("aria-label", d < 0 ? "subir" : "descer");
+            x.onclick = () => {
+              const j = i + d;
+              if (j < 0 || j >= lista.length) return;
+              [lista[i], lista[j]] = [lista[j], lista[i]];
+              salvarTudo();
+              painel();
+            };
+            ctl.append(x);
+          });
+          const del = el("button", "pmini", "✕");
+          del.setAttribute("aria-label", "apagar cartão");
+          del.onclick = () => {
+            lista.splice(i, 1);
+            if (!todasListas(programa).includes(slotAtivo)) slotAtivo = programa;
+            salvarTudo();
+            SFX.click();
+            painel();
+          };
+          ctl.append(del);
+          topo.append(ctl);
+          w.append(topo);
+          if (b.tipo === "enquanto") {
+            const d = el("div", "pinner");
+            desenharLista(b.corpo, d);
+            w.append(d);
+          }
+          if (b.tipo === "se") {
+            const d1 = el("div", "pinner");
+            d1.append(el("div", "plab", "então"));
+            desenharLista(b.entao, d1);
+            const d2 = el("div", "pinner");
+            d2.append(el("div", "plab", "senão"));
+            desenharLista(b.senao, d2);
+            w.append(d1, d2);
+          }
+          return w;
+        }
+        function adicionar(tipo) {
+          if (contarBlocos(programa) >= 40)
+            return say("Programa grande demais! Apague alguns cartões.", "think");
+          const b = novoBloco(tipo);
+          (todasListas(programa).includes(slotAtivo) ? slotAtivo : programa).push(b);
+          if (tipo === "enquanto") slotAtivo = b.corpo;
+          else if (tipo === "se") slotAtivo = b.entao;
+          SFX.pick();
+          salvarTudo();
+          if (aba === "regras") painel();
+        }
+        function exemplo() {
+          const mi = MISSOES[missao < 0 ? 0 : missao];
+          const mont = (arr) =>
+            arr.map(([tipo, props, f1, f2]) => ({
+              tipo,
+              ...props,
+              corpo: f1 && tipo === "enquanto" ? mont(f1) : undefined,
+              entao: tipo === "se" ? mont(f1 || []) : undefined,
+              senao: tipo === "se" ? mont(f2 || []) : undefined,
+            }));
+          programa.length = 0;
+          programa.push(...limparLista(mont(mi.exemplo())));
+          slotAtivo = programa;
+          salvarTudo();
+          say(
+            "Montei um exemplo para a missão: " +
+              mi.titulo +
+              ". Aperte ▶ Executar e depois tente mudar os números!",
+            "happy",
+          );
+          painel();
+        }
+        function marcar(id) {
+          body.querySelectorAll(".pcard.run").forEach((x) => x.classList.remove("run"));
+          if (!id) return;
+          const c = body.querySelector(`.pcard[data-bid="${id}"]`);
+          if (c) {
+            c.classList.add("run");
+            c.scrollIntoView({ block: "nearest" });
+          }
+        }
+
+        // --- Código: o MESMO programa em português e em JavaScript de verdade ---
+        const opTxt = (o) =>
+          o.startsWith("n:") ? o.slice(2) : o.startsWith("t:") ? `"${o.slice(2)}"` : o.slice(2);
+        const opJS = { "=": "===", "≠": "!==", "≤": "<=", "≥": ">=", "<": "<", ">": ">" };
+        function codigo(l, ind, js) {
+          const sp = "  ".repeat(ind),
+            cd = (c) => `${c.a} ${js ? opJS[c.op] : c.op} ${opTxt(c.b)}`;
+          return l
+            .map((b) => {
+              switch (b.tipo) {
+                case "ir":
+                  return sp + (js ? `irPara("${b.lugar}");` : `ir para ${b.lugar}`);
+                case "girar":
+                  return sp + (js ? `girarRoda(${b.voltas});` : `girar a roda ${b.voltas} vez(es)`);
+                case "embarcar":
+                  return sp + (js ? "embarcarPassageiro();" : "embarcar 1 passageiro");
+                case "olho":
+                  return sp + (js ? `olho = "${b.valor}";` : `olho ← ${b.valor}`);
+                case "cor":
+                  return sp + (js ? `cor = "${b.cor || b.valor}";` : `cor ← ${b.valor}`);
+                case "mudar":
+                  return (
+                    sp + (js ? `${b.variavel} = ${opTxt(b.valor)};` : `${b.variavel} ← ${opTxt(b.valor)}`)
+                  );
+                case "somar":
+                  return (
+                    sp +
+                    (js
+                      ? `${b.variavel} = ${b.variavel} + ${b.n};`
+                      : `${b.variavel} ← ${b.variavel} + ${b.n}`)
+                  );
+                case "dizer":
+                  return sp + (js ? `dizer(${JSON.stringify(b.texto)});` : `dizer "${b.texto}"`);
+                case "parar":
+                  return sp + (js ? "break;" : "parar o laço");
+                case "enquanto":
+                  return (
+                    sp +
+                    (js ? `while (${cd(b.cond)}) {` : `enquanto ${cd(b.cond)}:`) +
+                    "\n" +
+                    codigo(b.corpo, ind + 1, js) +
+                    (js ? `\n${sp}}` : "")
+                  );
+                case "se":
+                  return (
+                    sp +
+                    (js ? `if (${cd(b.cond)}) {` : `se ${cd(b.cond)} então:`) +
+                    "\n" +
+                    codigo(b.entao, ind + 1, js) +
+                    (js ? `\n${sp}} else {\n` : `\n${sp}senão:\n`) +
+                    codigo(b.senao, ind + 1, js) +
+                    (js ? `\n${sp}}` : "")
+                  );
+              }
+              return "";
+            })
+            .join("\n");
+        }
+        function painelCodigo(p) {
+          const decl = todasVars()
+            .map(
+              (n) =>
+                `let ${n} = ${typeof inicial[n] === "number" ? inicial[n] : JSON.stringify(inicial[n])};`,
+            )
+            .join("\n");
+          const a = el("pre", "pcodigo"),
+            b = el("pre", "pcodigo");
+          a.textContent = codigo(programa, 0, false) || "(programa vazio)";
+          b.textContent = decl + "\n\n" + (codigo(programa, 0, true) || "// (programa vazio)");
+          p.append(
+            el("div", "pnote", "🇧🇷 Em português:"),
+            a,
+            el("div", "pnote", "💻 Em JavaScript de verdade — você está programando!"),
+            b,
+          );
+        }
+        const codigoAtualiza = () => {
+          if (aba === "codigo") painel();
+        };
+
+        // ===== 5. BOTÕES DE CONTROLE =====
+        function botoes() {
+          const c = $("#pk-ctl", body);
+          c.innerHTML = "";
+          const mk = (t, f, extra = "") => {
+            const b = el("button", "tool " + extra, t);
+            b.onclick = f;
+            c.append(b);
+            return b;
+          };
+          mk(
+            "▶ Executar",
+            () => {
+              SFX.click();
+              executar();
+            },
+            "pkrun",
+          );
+          mk(pausado ? "⏵ Continuar" : "⏸ Pausar", pausarOuContinuar).disabled = !rodando;
+          mk("⏭ Passo", umPasso);
+          mk("🛑 Freio", freio).disabled = !rodando;
+          mk("↺ Reiniciar", () => {
+            if (rodando) terminar("freio");
+            reiniciarMundo();
+            info("Mundo reiniciado.");
+            SFX.click();
+          });
+          [
+            ["🐢", 0],
+            ["🚶", 1],
+            ["🐇", 2],
+          ].forEach(([l, v]) => {
+            const b = el("button", "chip" + ((S.parqueVel ?? 1) === v ? " on" : ""), l);
+            b.setAttribute("aria-label", ["devagar", "normal", "rápido"][v]);
+            b.onclick = () => {
+              S.parqueVel = v;
+              save();
+              botoes();
+            };
+            c.append(b);
+          });
+          mk(noiteAlvo ? "☀️ Dia" : "🌙 Noite", () => {
+            noiteAlvo = noiteAlvo ? 0 : 1;
+            SFX.click();
+            botoes();
+          });
+        }
+
+        // ===== 6. O MUNDO 3D (mesmo truque das continhas: projetar 3D em 2D) =====
+        const cv = $("#pk-cv", body),
+          g = cv.getContext("2d");
+        let W = 640,
+          H = 440;
+        const cam = { yaw: -0.5, pitch: 0.55, s: 20 };
+        function fit() {
+          W = Math.max(300, $(".cenaBox", body).clientWidth - 4);
+          H = Math.max(340, Math.min(480, Math.round(innerHeight * 0.52)));
+          const d = window.devicePixelRatio || 1;
+          cv.style.width = W + "px";
+          cv.style.height = H + "px";
+          cv.width = Math.round(W * d);
+          cv.height = Math.round(H * d);
+          g.setTransform(d, 0, 0, d, 0, 0);
+          cam.s = W / 34;
+        }
+        // Projeção: gira o mundo (yaw e pitch) e joga fora a profundidade. Devolve [x, y, profundidade].
+        function pr(x, y, z) {
+          const cy = Math.cos(cam.yaw),
+            sy = Math.sin(cam.yaw),
+            cp = Math.cos(cam.pitch),
+            sp = Math.sin(cam.pitch);
+          y -= 3;
+          const x1 = x * cy + z * sy,
+            z1 = -x * sy + z * cy,
+            y2 = y * cp - z1 * sp,
+            z2 = y * sp + z1 * cp;
+          return [W / 2 + x1 * cam.s, H * 0.58 - y2 * cam.s, z2];
+        }
+        const rgb = (c, k = 1) =>
+          `rgb(${Math.min(255, c[0] * k) | 0},${Math.min(255, c[1] * k) | 0},${Math.min(255, c[2] * k) | 0})`;
+        const FACES3D = [
+          {
+            n: [0, 1, 0],
+            v: [
+              [0, 1, 0],
+              [1, 1, 0],
+              [1, 1, 1],
+              [0, 1, 1],
+            ],
+            k: 1.15,
+          },
+          {
+            n: [0, 0, 1],
+            v: [
+              [0, 0, 1],
+              [1, 0, 1],
+              [1, 1, 1],
+              [0, 1, 1],
+            ],
+            k: 1,
+          },
+          {
+            n: [1, 0, 0],
+            v: [
+              [1, 0, 1],
+              [1, 0, 0],
+              [1, 1, 0],
+              [1, 1, 1],
+            ],
+            k: 0.8,
+          },
+          {
+            n: [-1, 0, 0],
+            v: [
+              [0, 0, 0],
+              [0, 0, 1],
+              [0, 1, 1],
+              [0, 1, 0],
+            ],
+            k: 0.9,
+          },
+          {
+            n: [0, 0, -1],
+            v: [
+              [1, 0, 0],
+              [0, 0, 0],
+              [0, 1, 0],
+              [1, 1, 0],
+            ],
+            k: 0.72,
+          },
+        ];
+        // Caixa 3D: só desenha as faces voltadas para a câmera (culling).
+        function caixa(x, y, z, w, h, d, c) {
+          const sy = Math.sin(cam.yaw),
+            cy = Math.cos(cam.yaw),
+            cp = Math.cos(cam.pitch),
+            sp = Math.sin(cam.pitch);
+          g.lineJoin = "round";
+          for (const f of FACES3D) {
+            const n1z = -f.n[0] * sy + f.n[2] * cy;
+            if (f.n[1] * sp + n1z * cp <= 0.02) continue;
+            const P = f.v.map((v) => pr(x + v[0] * w, y + v[1] * h, z + v[2] * d));
+            g.fillStyle = rgb(c, f.k);
+            g.beginPath();
+            P.forEach((q, i) => (i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])));
+            g.closePath();
+            g.fill();
+            g.strokeStyle = "rgba(0,0,0,.22)";
+            g.lineWidth = 1;
+            g.stroke();
+          }
+        }
+        function disco(x, y, z, r, c) {
+          // círculo no chão (plano horizontal)
+          g.fillStyle = rgb(c);
+          g.beginPath();
+          for (let i = 0; i <= 28; i++) {
+            const a = (i / 28) * 6.2832,
+              q = pr(x + Math.cos(a) * r, y, z + Math.sin(a) * r);
+            i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]);
+          }
+          g.closePath();
+          g.fill();
+          g.strokeStyle = "rgba(0,0,0,.18)";
+          g.stroke();
+        }
+        function esfera(x, y, z, r, c, brilho = true) {
+          const q = pr(x, y, z),
+            R = r * cam.s;
+          const gr = g.createRadialGradient(q[0] - R * 0.35, q[1] - R * 0.35, R * 0.1, q[0], q[1], R);
+          gr.addColorStop(0, rgb(c, 1.35));
+          gr.addColorStop(1, rgb(c, 0.8));
+          g.fillStyle = brilho ? gr : rgb(c);
+          g.beginPath();
+          g.arc(q[0], q[1], R, 0, 7);
+          g.fill();
+        }
+        function linha3(a, b, cor, larg) {
+          const p = pr(...a),
+            q = pr(...b);
+          g.strokeStyle = cor;
+          g.lineWidth = larg;
+          g.lineCap = "round";
+          g.beginPath();
+          g.moveTo(p[0], p[1]);
+          g.lineTo(q[0], q[1]);
+          g.stroke();
+        }
+
+        // Objetos do cenário. Cada um tem um ponto central (x,y,z) usado para ORDENAR por profundidade
+        // (algoritmo do pintor: desenha primeiro o que está mais longe).
+        const luzes = []; // pontos que brilham de noite
+        const itens = [];
+        [
+          [-13, -6],
+          [-9, -9],
+          [-3, -9.5],
+          [4, -9],
+          [12, -8],
+          [14, 3],
+          [14, 9],
+          [-14, 9],
+          [-6, 9.5],
+          [6, 9.5],
+        ].forEach(([x, z], i) =>
+          itens.push({
+            x,
+            y: 1.5,
+            z,
+            desenhar() {
+              caixa(x - 0.3, 0, z - 0.3, 0.6, 2.2, 0.6, [120, 80, 45]);
+              esfera(x, 3.4, z, 1.7 + (i % 3) * 0.2, [60, 160, 80]);
+              esfera(x, 4.6, z, 1.1, [80, 185, 95]);
+            },
+          }),
+        );
+        [
+          [-9, 3.2],
+          [-4, 3.2],
+          [2, 3.2],
+          [-9, 6.8],
+          [-4, 6.8],
+          [2, 6.8],
+          [6, 6.8],
+        ].forEach(([x, z]) =>
+          itens.push({
+            x,
+            y: 1.5,
+            z,
+            desenhar() {
+              caixa(x - 0.1, 0, z - 0.1, 0.2, 3, 0.2, [90, 90, 100]);
+              esfera(x, 3.2, z, 0.35, [255, 230, 140], false);
+              luzes.push([x, 3.2, z, 3.2, "255,225,130"]);
+            },
+          }),
+        );
+        itens.push({
+          x: -12.6,
+          y: 2,
+          z: 5,
+          desenhar() {
+            // portão de entrada
+            caixa(-12.9, 0, 3.0, 0.8, 4.2, 0.8, [200, 80, 90]);
+            caixa(-12.9, 0, 6.2, 0.8, 4.2, 0.8, [200, 80, 90]);
+            caixa(-13.0, 4.2, 2.8, 1.0, 0.9, 4.4, [255, 200, 80]);
+            const q = pr(-12.5, 5.4, 5);
+            g.fillStyle = "#7a3b00";
+            g.font = `900 ${Math.max(10, cam.s * 0.5)}px "Trebuchet MS",sans-serif`;
+            g.textAlign = "center";
+            g.fillText("PORTÃO", q[0], q[1]);
+          },
+        });
+        itens.push({
+          x: -1,
+          y: 1,
+          z: 5,
+          desenhar() {
+            // fonte da praça
+            disco(-1, 0.05, 5, 3.2, [205, 205, 215]);
+            disco(-1, 0.4, 5, 1.9, [90, 170, 235]);
+            caixa(-1.3, 0.4, 4.7, 0.6, 1.6, 0.6, [190, 190, 200]);
+            for (let i = 0; i < 4; i++)
+              esfera(
+                -1 + Math.cos(i * 1.6 + performance.now() / 500) * 0.9,
+                1.2 + Math.abs(Math.sin(performance.now() / 300 + i)) * 0.8,
+                5 + Math.sin(i * 1.6 + performance.now() / 500) * 0.9,
+                0.18,
+                [170, 215, 255],
+              );
+          },
+        });
+        itens.push({ x: 9, y: 6.8, z: -1, desenhar: desenharRoda });
+        const itemRobo = { x: 0, y: 0, z: 0, desenhar: desenharRobo };
+        itens.push(itemRobo);
+
+        // A roda-gigante: aros, raios, cabines que ficam sempre de pé e a LÂMPADA DA CONDIÇÃO no centro.
+        function desenharRoda(now) {
+          const cx = 9,
+            cy = 6.8,
+            R = 5.5,
+            zs = [-1.7, -0.3];
+          zs.forEach((z) => {
+            linha3([cx, cy, z], [cx - 3.8, 0, z], "#8a8fa3", cam.s * 0.28);
+            linha3([cx, cy, z], [cx + 3.8, 0, z], "#8a8fa3", cam.s * 0.28);
+          });
+          caixa(cx - 4.4, -0.3, -2.1, 8.8, 0.3, 2.2, [150, 150, 165]);
+          const prof = zs.map((z) => pr(cx, cy, z)[2]),
+            ordem = prof[0] < prof[1] ? [0, 1] : [1, 0]; // plano mais distante primeiro
+          const aro = (z) => {
+            g.strokeStyle = "#f5c518";
+            g.lineWidth = cam.s * 0.22;
+            g.beginPath();
+            for (let i = 0; i <= 40; i++) {
+              const a = (i / 40) * 6.2832,
+                q = pr(cx + Math.cos(a) * R, cy + Math.sin(a) * R, z);
+              i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]);
+            }
+            g.stroke();
+            for (let i = 0; i < 8; i++) {
+              const a = roda.angulo + (i * 6.2832) / 8;
+              linha3([cx, cy, z], [cx + Math.cos(a) * R, cy + Math.sin(a) * R, z], "#ffd966", cam.s * 0.1);
+            }
+            for (let i = 0; i < 16; i++) {
+              // luzinhas piscando quando a condição está verdadeira
+              const a = (i / 16) * 6.2832,
+                on = lampada === "verde" && Math.floor(now / 200 + i) % 2 === 0;
+              esfera(
+                cx + Math.cos(a) * R,
+                cy + Math.sin(a) * R,
+                z,
+                0.2,
+                on ? [255, 255, 160] : [255, 190, 90],
+                false,
+              );
+              if (on || noite > 0.4)
+                luzes.push([cx + Math.cos(a) * R, cy + Math.sin(a) * R, z, 1.6, "255,220,120"]);
+            }
+          };
+          aro(zs[ordem[0]]);
+          const cab = [];
+          for (let i = 0; i < 8; i++) {
+            const a = roda.angulo + (i * 6.2832) / 8;
+            cab.push({ i, x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R });
+          }
+          cab.sort((p, q) => pr(p.x, p.y, -1)[2] - pr(q.x, q.y, -1)[2]);
+          cab.forEach((c) => {
+            // a cabine fica SEMPRE de pé: só a posição gira, a caixa não
+            caixa(
+              c.x - 0.6,
+              c.y - 1.7,
+              -1.6,
+              1.2,
+              1.2,
+              1.2,
+              [
+                [255, 120, 120],
+                [120, 190, 255],
+                [150, 220, 130],
+                [255, 200, 90],
+              ][c.i % 4],
+            );
+            if (c.i < vars.passageiros) {
+              const q = pr(c.x, c.y - 1.1, -0.4);
+              g.font = `${cam.s * 0.95}px sans-serif`;
+              g.textAlign = "center";
+              g.textBaseline = "middle";
+              g.fillText(BICHOS[c.i], q[0], q[1]);
+              g.textBaseline = "alphabetic";
+            }
+          });
+          aro(zs[ordem[1]]);
+          const cor =
+            lampada === "verde" ? [60, 220, 130] : lampada === "vermelha" ? [255, 80, 80] : [190, 190, 190];
+          esfera(cx, cy, -0.3 + 0.5, 1.0, cor);
+          if (lampada) luzes.push([cx, cy, 0.2, 4.5, lampada === "verde" ? "80,255,150" : "255,90,90"]);
+        }
+        function desenharRobo(now) {
+          const calm = S.calm,
+            sono = vars.energia <= 0 || (robo.tonto && now < robo.tonto);
+          const b = Math.sin(now / 420) * (calm ? 0.08 : 0.3),
+            q = pr(robo.x, robo.y + b, robo.z),
+            u = cam.s * 0.9;
+          const ch = pr(robo.x, 0, robo.z);
+          g.fillStyle = "rgba(0,0,0,.2)";
+          g.beginPath();
+          g.ellipse(ch[0], ch[1], u * (1.1 - b * 0.1), u * 0.35, 0, 0, 7);
+          g.fill();
+          const cor = CORES_ROBO[vars.cor] || CORES_ROBO.turquesa;
+          g.fillStyle = "#ffb703";
+          g.beginPath();
+          g.ellipse(
+            q[0],
+            q[1] + u * 1.15 + (calm ? 0 : Math.sin(now / 60) * 2),
+            u * 0.35,
+            u * 0.5 + (calm ? 0 : Math.sin(now / 50) * 3),
+            0,
+            0,
+            7,
+          );
+          g.fill(); // jato
+          rr(g, q[0] - u * 1.1, q[1] - u * 1.2, u * 2.2, u * 2, u * 0.7);
+          g.fillStyle = sono ? "#9aa5b1" : cor;
+          g.fill();
+          g.strokeStyle = "rgba(0,0,0,.3)";
+          g.lineWidth = 3;
+          g.stroke();
+          rr(g, q[0] - u * 0.8, q[1] - u * 0.85, u * 1.6, u * 1.15, u * 0.4);
+          g.fillStyle = "#16324f";
+          g.fill();
+          g.strokeStyle = "#7ff3ff";
+          g.fillStyle = "#7ff3ff";
+          g.lineWidth = Math.max(2, u * 0.12);
+          g.lineCap = "round";
+          [-0.4, 0.4].forEach((dx) => {
+            if (vars.olho === "aberto" && !sono) {
+              g.beginPath();
+              g.ellipse(q[0] + u * dx, q[1] - u * 0.4, u * 0.17, u * 0.22, 0, 0, 7);
+              g.fill();
+            } else {
+              g.beginPath();
+              g.moveTo(q[0] + u * (dx - 0.17), q[1] - u * 0.38);
+              g.lineTo(q[0] + u * (dx + 0.17), q[1] - u * 0.38);
+              g.stroke();
+            }
+          });
+          g.beginPath();
+          if (sono) {
+            g.moveTo(q[0] - u * 0.2, q[1] - u * 0.05);
+            g.lineTo(q[0] + u * 0.2, q[1] - u * 0.05);
+          } else g.arc(q[0], q[1] - u * 0.1, u * 0.28, 0.25, 2.9);
+          g.stroke();
+          g.strokeStyle = "rgba(0,0,0,.3)";
+          g.lineWidth = 3;
+          g.beginPath();
+          g.moveTo(q[0], q[1] - u * 1.2);
+          g.lineTo(q[0], q[1] - u * 1.6);
+          g.stroke();
+          g.fillStyle = "#ff5d8f";
+          g.beginPath();
+          g.arc(q[0], q[1] - u * 1.7, u * 0.18, 0, 7);
+          g.fill();
+          if (sono) {
+            g.fillStyle = "#5b6b7a";
+            g.font = `900 ${u * 0.7}px sans-serif`;
+            g.textAlign = "center";
+            g.fillText("z z", q[0] + u * 1.2, q[1] - u * 1.2);
+          }
+          luzes.push([robo.x, robo.y, robo.z, 2.2, "130,240,255"]);
+          robo.tela = { x: q[0], y: q[1], r: u * 1.4 };
+          if (robo.fala && now < robo.fala.ate) {
+            // balão de fala sobre o robô
+            g.font = `800 ${Math.max(13, u * 0.62)}px "Trebuchet MS",sans-serif`;
+            const tw = g.measureText(robo.fala.texto).width + 20,
+              bx = q[0] - tw / 2,
+              by = q[1] - u * 3.1;
+            rr(g, bx, by, tw, u * 0.95, 12);
+            g.fillStyle = "#fff";
+            g.fill();
+            g.strokeStyle = "#ffd166";
+            g.lineWidth = 3;
+            g.stroke();
+            g.fillStyle = "#27324a";
+            g.textAlign = "center";
+            g.fillText(robo.fala.texto, q[0], by + u * 0.65);
+          }
+        }
+        // Um quadro da animação: atualiza a física (dt!) e desenha tudo, do fundo para a frente.
+        function quadro(dt, now) {
+          const k = 1 - Math.exp(-dt * 6);
+          robo.x += (robo.alvo[0] - robo.x) * k;
+          robo.y += (robo.alvo[1] - robo.y) * k;
+          robo.z += (robo.alvo[2] - robo.z) * k;
+          roda.angulo += (roda.alvo - roda.angulo) * (1 - Math.exp(-dt * 3));
+          if (now < roda.loucaAte) {
+            roda.angulo += dt * 10;
+            roda.alvo = roda.angulo;
+          } // roda "enlouquecida" no laço infinito
+          noite += (noiteAlvo - noite) * (1 - Math.exp(-dt * 3));
+          const ceu = g.createLinearGradient(0, 0, 0, H);
+          ceu.addColorStop(0, "#9bd4ff");
+          ceu.addColorStop(1, "#fdf3d8");
+          g.fillStyle = ceu;
+          g.fillRect(0, 0, W, H);
+          if (noite > 0.02) {
+            const nc = g.createLinearGradient(0, 0, 0, H);
+            nc.addColorStop(0, "#0e1440");
+            nc.addColorStop(1, "#3a3f7a");
+            g.globalAlpha = noite;
+            g.fillStyle = nc;
+            g.fillRect(0, 0, W, H);
+            g.globalAlpha = 1;
+          }
+          caixa(-16, -0.8, -11, 32, 0.8, 22, [110, 190, 100]); // gramado
+          caixa(-14, 0, 3.2, 26, 0.04, 3.6, [235, 215, 175]); // caminho
+          caixa(8.5, 0, -0.5, 1.4, 0.04, 4.2, [235, 215, 175]);
+          luzes.length = 0;
+          itemRobo.x = robo.x;
+          itemRobo.y = robo.y;
+          itemRobo.z = robo.z;
+          itens.forEach((i) => (i.z2 = pr(i.x, i.y, i.z)[2]));
+          itens.sort((a, b) => a.z2 - b.z2);
+          itens.forEach((i) => i.desenhar(now));
+          if (noite > 0.02) {
+            g.fillStyle = `rgba(8,12,50,${0.5 * noite})`;
+            g.fillRect(0, 0, W, H);
+            g.globalCompositeOperation = "lighter";
+            luzes.forEach(([x, y, z, r, c]) => {
+              const q = pr(x, y, z),
+                R = r * cam.s,
+                gr = g.createRadialGradient(q[0], q[1], 0, q[0], q[1], R);
+              gr.addColorStop(0, `rgba(${c},${0.55 * noite})`);
+              gr.addColorStop(1, `rgba(${c},0)`);
+              g.fillStyle = gr;
+              g.fillRect(q[0] - R, q[1] - R, R * 2, R * 2);
+            });
+            g.globalCompositeOperation = "source-over";
+          }
+        }
+        // Arrastar o fundo gira a câmera; um toque no robô abre o corpo dele.
+        let drag = null;
+        cv.addEventListener("pointerdown", (e) => {
+          try {
+            cv.setPointerCapture(e.pointerId);
+          } catch (_) {}
+          const r = cv.getBoundingClientRect();
+          drag = { x: e.clientX, y: e.clientY, moved: 0, hx: e.clientX - r.left, hy: e.clientY - r.top };
+        });
+        cv.addEventListener("pointermove", (e) => {
+          if (!drag) return;
+          const dx = e.clientX - drag.x,
+            dy = e.clientY - drag.y;
+          drag.moved += Math.abs(dx) + Math.abs(dy);
+          drag.x = e.clientX;
+          drag.y = e.clientY;
+          if (drag.moved > 8) {
+            cam.yaw += dx * 0.008;
+            cam.pitch = Math.max(0.2, Math.min(1.3, cam.pitch - dy * 0.006));
+          }
+        });
+        const fimToque = () => {
+          if (!drag) return;
+          const d = drag;
+          drag = null;
+          if (d.moved <= 8 && robo.tela && Math.hypot(d.hx - robo.tela.x, d.hy - robo.tela.y) < robo.tela.r) {
+            SFX.star();
+            aba = "corpo";
+            abas();
+            painel();
+            robo.fala = { texto: "Oi! Sou eu!", ate: performance.now() + 1800 };
+            say("Esse é o meu corpo! Veja o estado do meu olho e a minha cor.", "cheer");
+          }
+        };
+        cv.addEventListener("pointerup", fimToque);
+        cv.addEventListener("pointercancel", () => (drag = null));
+
+        // ===== 7. LARGADA =====
+        fit();
+        onResize = fit;
+        missoes();
+        abas();
+        painel();
+        botoes();
+        loop((dt, now) => quadro(dt, now));
+      }
+
       /* ===================== 📊 TABUADA ===================== */
       // Três jeitos de enxergar a tabuada: GRADE (área do retângulo), PULOS (contagem de n em n) e TREINO (praticar).
       // A aba Tabuada tem 3 sub-telas. Em vez de trocar de aba, trocamos só o conteúdo da área "tbody" (função show) e lembramos a escolha em S.tabSub.
@@ -4299,7 +6058,7 @@
           };
           $("#plan", w).append(b);
         });
-        ["soma", "sub", "mult", "div", "ouro", "tab", "bal", "pausa"].forEach((id) => {
+        ["soma", "sub", "mult", "div", "ouro", "parque", "tab", "bal", "pausa"].forEach((id) => {
           const m = MODS[id],
             c = el("button", "card", `<div class="ic">${m.icon}</div><h3>${m.title}</h3><p>${m.desc}</p>`);
           c.style.setProperty("--c", m.color);

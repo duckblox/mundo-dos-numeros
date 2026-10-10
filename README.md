@@ -2,7 +2,7 @@
 
 > **Aprender matemática brincando.**
 
-## ▶️ [**JOGAR AGORA → SEU-USUARIO.github.io/mundo-dos-numeros**](https://SEU-USUARIO.github.io/mundo-dos-numeros/)
+## ▶️ [**JOGAR AGORA → duckblox.github.io/mundo-dos-numeros**](https://duckblox.github.io/mundo-dos-numeros/)
 
 *Abra o link no navegador do computador, tablet ou celular. Não precisa instalar nada, baixar nada nem criar conta.*
 

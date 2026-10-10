@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/33292591/README.md)
 # 🤖 Mundo dos Números com o Zeca
 
 > **Aprender matemática brincando.**
@@ -30,7 +31,7 @@ Cada rodada tem 5 missões. Cada acerto vale uma ⭐ e, juntando estrelas, o Zec
 
 ## ⚙️ Ajustes
 
-No botão **⚙️ Ajustes**: nome, sons, ler em voz alta, **modo calmo** (menos movimento), tamanho das letras e zerar o progresso. A dificuldade muda em cada atividade (🌱 Fácil, 🌿 Médio, 🌳 Desafio).
+No botão **⚙️ Ajustes**: nome, sons, **música de parque** (liga/desliga e volume; também há o botão 🎵 no topo), ler em voz alta, **modo calmo** (menos movimento), tamanho das letras e zerar o progresso. A dificuldade muda em cada atividade (🌱 Fácil, 🌿 Médio, 🌳 Desafio).
 
 ## 📱 Dica: atalho na tela inicial
 

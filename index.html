@@ -23,7 +23,7 @@
       • Eventos (clique, teclado, ponteiro)  "Teclado numérico" e "Arrastar e soltar"
       • Canvas 2D (desenhar com código) .... "Zeca, o mascote", "Confete e fundo"
       • Animação com requestAnimationFrame . "Confete e fundo" e "Roteamento"
-      • Som sem arquivos (WebAudio) ........ "Som (WebAudio, sem arquivos)"
+      • Som e música sem arquivos (WebAudio)  "Som (WebAudio...)" e "Música de parque"
       • Salvar no navegador (localStorage) . "Estado salvo"
       • Async/await e Promises .............. função sleep e renderMult → skipCount
       • Matemática de um mundo 3D .......... "CONTINHAS COM MATERIAL DOURADO 3D"
@@ -212,6 +212,10 @@
         #hud .pill {
           flex: 1;
         }
+      }
+
+      #hud {
+        flex-wrap: wrap; /* com 4 botões, deixa quebrar linha em telas estreitas */
       }
 
       /* Abas */
@@ -1144,6 +1148,7 @@
         </div>
         <div id="hud">
           <div class="pill">⭐ <b id="starCount">0</b> estrelas</div>
+          <button class="pill" id="musicBtn" aria-pressed="false">🎵 Música: desligada</button>
           <button class="pill" id="settingsBtn">⚙️ Ajustes</button>
           <button class="pill" id="calmBtn">🌙 Preciso de uma pausa</button>
         </div>
@@ -1178,7 +1183,7 @@
       // MAPA DO SCRIPT (de cima para baixo)
       //   1. Utilidades ......... funções pequenas e dados que todo o resto usa
       //   2. Estado salvo ....... guarda estrelas, nome e ajustes no navegador
-      //   3. Som e Voz .......... sons criados por código e leitura em voz alta
+      //   3. Som, Música e Voz .. sons e valsa criados por código; leitura em voz alta
       //   4. Mascote e efeitos .. desenhos no Canvas (Zeca, confete, fundo)
       //   5. Roteamento ......... troca de abas, laços de animação, recompensas
       //   6. Teclado e arrastar . componentes reutilizáveis pelas atividades
@@ -1309,6 +1314,8 @@
         trainInv: false,
         balOps: ["+"],
         balSlow: true,
+        music: false, // música de parque ligada? (começa desligada)
+        musicVol: 0.06, // volume da música (0 a 0,15)
         ouroOp: "mix",
       };
 
@@ -1364,8 +1371,9 @@
       // AudioContext = a "mesa de som". Só pode ser criado/ativado depois de um clique do usuário (regra dos navegadores contra sons surpresa), por isso é criado sob demanda em ac().
       let AC = null;
 
-      function ac() {
-        if (!S.sound) return null;
+      // audio(): devolve a "mesa de som", criando-a na primeira vez. Serve para a música
+      // e para os efeitos. Se o navegador não suportar, devolve null e o jogo segue mudo.
+      function audio() {
         try {
           if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
           if (AC.state === "suspended") AC.resume();
@@ -1373,6 +1381,12 @@
           return null;
         }
         return AC;
+      }
+
+      // ac(): igual a audio(), mas só quando os EFEITOS SONOROS estão ligados (S.sound).
+      // Assim a criança pode ouvir só a música, só os efeitos, os dois ou nenhum.
+      function ac() {
+        return S.sound ? audio() : null;
       }
 
       // Toca UMA nota.
@@ -1437,6 +1451,117 @@
           tone(700, 0.12, "sine", 0.07, 0, -250);
         },
       };
+
+      /* ===================== Música de parque (liga/desliga) ===================== */
+      // Uma valsa de carrossel feita 100% por código. Aprenda aqui duas ideias importantes:
+      //   1) ESCALONAR NO RELÓGIO DO ÁUDIO: setInterval roda a cada ~25 ms e "olha à frente"
+      //      200 ms, agendando as próximas notas com o relógio preciso do áudio
+      //      (a.currentTime). Se tocássemos direto no setInterval, o ritmo tremeria.
+      //   2) MÚSICA = DADOS: a melodia é só uma lista de números (semitons acima do Dó
+      //      central; null = silêncio). Mude os números e você muda a música!
+      const VALSA = {
+        // 8 compassos de 3 tempos = 24 notas. Cada número é uma nota (ver NT lá em cima).
+        melodia: [4, 7, 4, 12, 11, 7, 9, 5, 9, 7, null, null, 4, 7, 4, 12, 14, 16, 14, 11, 7, 12, null, null],
+        // Acorde de cada compasso (C = Dó, F = Fá, G = Sol), em semitons.
+        acorde: { C: [0, 4, 7], F: [5, 9, 12], G: [7, 11, 14] },
+        harmonia: ["C", "C", "F", "C", "C", "C", "G", "C"],
+      };
+      // Estado do tocador: nó de volume, o temporizador, o instante da próxima nota e o tempo atual.
+      const MUS = { gain: null, timer: null, proximo: 0, tempo: 0 };
+
+      // Volume final: no modo calmo a música fica ainda mais baixinha.
+      const volumeMusica = () => (S.calm ? 0.6 : 1) * (S.musicVol || 0.06);
+
+      // Toca UMA nota da música: oscilador -> filtro (deixa o som macio) -> envelope -> volume da música.
+      function notaMusica(freq, t, dur, tipo, vol) {
+        const a = audio();
+        if (!a || !MUS.gain) return;
+        const o = a.createOscillator(),
+          g = a.createGain(),
+          f = a.createBiquadFilter();
+        o.type = tipo;
+        o.frequency.value = freq;
+        f.type = "lowpass"; // corta os agudos ásperos
+        f.frequency.value = 1800;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.02); // sobe rápido...
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur); // ...e desce suave
+        o.connect(f);
+        f.connect(g);
+        g.connect(MUS.gain);
+        o.start(t);
+        o.stop(t + dur + 0.05);
+      }
+
+      // Chamada a cada 25 ms: agenda todas as notas que cairão nos próximos 200 ms.
+      function musicaAgendar() {
+        const a = audio();
+        if (!a) return;
+        const spb = 60 / (S.calm ? 84 : 104); // segundos por tempo (menor andamento no modo calmo)
+        while (MUS.proximo < a.currentTime + 0.2) {
+          const b = MUS.tempo % 24, // posição na música (0 a 23)
+            compasso = Math.floor(b / 3),
+            pos = b % 3, // 0 = primeiro tempo do compasso
+            t = MUS.proximo;
+          const m = VALSA.melodia[b];
+          if (m != null) notaMusica(NT(m), t, spb * 0.9, "triangle", 0.5); // melodia
+          const acorde = VALSA.acorde[VALSA.harmonia[compasso]];
+          if (pos === 0) notaMusica(NT(acorde[0] - 12), t, spb * 0.8, "sine", 0.7); // "oom" (grave)
+          else acorde.forEach((x) => notaMusica(NT(x), t, spb * 0.3, "square", 0.08)); // "pá" (curtinho)
+          MUS.proximo += spb;
+          MUS.tempo++;
+        }
+      }
+
+      // Liga a música (com fade de entrada, para não "estourar" no ouvido).
+      function musicaIniciar() {
+        if (!S.music || MUS.timer) return;
+        const a = audio();
+        if (!a) return;
+        if (!MUS.gain) {
+          MUS.gain = a.createGain();
+          MUS.gain.gain.value = 0.0001;
+          MUS.gain.connect(a.destination);
+        }
+        MUS.gain.gain.cancelScheduledValues(a.currentTime);
+        MUS.gain.gain.setTargetAtTime(volumeMusica(), a.currentTime, 0.25);
+        MUS.proximo = a.currentTime + 0.1;
+        MUS.tempo = 0;
+        MUS.timer = setInterval(musicaAgendar, 25);
+      }
+
+      // Desliga a música (com fade de saída).
+      function musicaParar() {
+        if (!MUS.timer) return;
+        clearInterval(MUS.timer);
+        MUS.timer = null;
+        if (AC && MUS.gain) {
+          MUS.gain.gain.cancelScheduledValues(AC.currentTime);
+          MUS.gain.gain.setTargetAtTime(0.0001, AC.currentTime, 0.15);
+        }
+      }
+
+      // Faz a música obedecer ao interruptor (S.music) e atualiza o texto do botão do cabeçalho.
+      function musicaAplicar() {
+        if (S.music) musicaIniciar();
+        else musicaParar();
+        const b = $("#musicBtn");
+        if (b) {
+          b.textContent = S.music ? "🎵 Música: ligada" : "🎵 Música: desligada";
+          b.setAttribute("aria-pressed", S.music);
+        }
+      }
+
+      // Ajusta o volume ao vivo (usado pelo controle deslizante e pelo modo calmo).
+      function musicaVolume() {
+        if (AC && MUS.gain && MUS.timer) MUS.gain.gain.setTargetAtTime(volumeMusica(), AC.currentTime, 0.1);
+      }
+
+      // Boa prática: música para quando a aba fica escondida e volta quando a pessoa retorna.
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) musicaParar();
+        else if (S.music) musicaIniciar();
+      });
 
       /* ===================== Voz ===================== */
       // Leitura em voz alta usando a voz do próprio aparelho (SpeechSynthesis). Não envia nada pela internet.
@@ -4203,6 +4328,8 @@
         d.innerHTML = `<h2>⚙️ Ajustes</h2>
   <div class="set"><span>Meu nome</span><input id="nm" maxlength="14" value="${esc(S.name || "")}" style="font:inherit;padding:6px 10px;border-radius:12px;border:3px solid #d3d9ee;width:150px"></div>
   ${row("🔊 Sons", "sound")}${row("🗣️ Ler em voz alta", "voice")}${row("🌙 Modo calmo (menos movimento)", "calm")}
+  ${row("🎵 Música de parque", "music")}
+  <div class="set"><span>🔉 Volume da música</span><input type="range" id="mv" min="1" max="15" value="${Math.round((S.musicVol || 0.06) * 100)}" style="width:150px" aria-label="Volume da música"></div>
   <div class="set"><span>🔠 Tamanho das letras</span><span><button class="tool" id="fm">A−</button> <button class="tool" id="fp">A+</button></span></div>
   <div class="set"><span>Zerar estrelas e progresso</span><button class="tool" id="rst">Zerar</button></div>
   <div class="dlgbtns"><button class="bigbtn" id="sclose">Pronto!</button></div>`;
@@ -4217,8 +4344,15 @@
               applyPrefs();
               if (k === "sound" && S.sound) SFX.good();
               if (k === "voice" && S.voice) speak("Agora eu vou ler em voz alta!");
+              if (k === "music") musicaAplicar(); // liga ou desliga a música
+              if (k === "calm") musicaVolume(); // modo calmo = música mais baixinha
             }),
         );
+        $("#mv", d).oninput = (e) => {
+          S.musicVol = e.target.value / 100; // o controle vai de 1 a 15, o volume de 0,01 a 0,15
+          save();
+          musicaVolume();
+        };
         $("#nm", d).oninput = (e) => {
           S.name = e.target.value.trim();
           save();
@@ -4281,7 +4415,17 @@
           ac();
           speak(lastSaid);
         };
-        document.addEventListener("pointerdown", () => ac());
+        document.addEventListener("pointerdown", () => {
+          ac();
+          if (S.music) musicaIniciar(); // se a música estava ligada, começa no primeiro toque
+        });
+        $("#musicBtn").onclick = () => {
+          S.music = !S.music;
+          save();
+          musicaAplicar();
+          SFX.click();
+        };
+        musicaAplicar(); // só ajusta o texto do botão; o som começa após o primeiro toque
         window.addEventListener("resize", () => {
           sizeCanvases();
           onResize && onResize();

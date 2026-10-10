@@ -16,8 +16,9 @@ Um jogo para treinar soma, subtração, multiplicação, divisão e tabuada com 
 2. **➕ Somar** e **➖ Subtrair**: leve as peças para a cesta ou alimente o Gulosinho.
 3. **✖️ Multiplicar** e **➗ Dividir**: monte bandejas iguais e reparta o lanche entre os amigos.
 4. **🧊 Continhas 3D**: arme contas com o material dourado (cubinhos, barras e placas), gire as peças e faça trocas de 10 por 1 e empréstimos.
-5. **📊 Tabuada**: grade mágica, pulos do sapo e treino. **🎈 Balões**: estoure o balão com a resposta certa.
-6. **🌙 Pausa**: respire junto com o círculo sempre que precisar descansar.
+5. **🎡 Parque**: um parque 3D com um robô flutuante que você programa com cartões (variáveis, **se**, **enquanto**). Tem missões, passo a passo, modo noite e o programa também aparece em JavaScript de verdade.
+6. **📊 Tabuada**: grade mágica, pulos do sapo e treino. **🎈 Balões**: estoure o balão com a resposta certa.
+7. **🌙 Pausa**: respire junto com o círculo sempre que precisar descansar.
 
 Cada rodada tem 5 missões. Cada acerto vale uma ⭐ e, juntando estrelas, o Zeca ganha chapéu, coroa, óculos e capa.
 
@@ -27,6 +28,7 @@ Cada rodada tem 5 missões. Cada acerto vale uma ⭐ e, juntando estrelas, o Zec
 - Valor posicional: unidades, dezenas e centenas
 - Vai-um (troca de 10 por 1) e empréstimo na subtração
 - Tabuada e a relação entre multiplicar e dividir
+- Lógica de programação: variáveis, condições (se/senão), repetição (enquanto) e como encontrar erros
 
 ## ⚙️ Ajustes
 

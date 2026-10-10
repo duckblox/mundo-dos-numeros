@@ -1,0 +1,4302 @@
+<!doctype html>
+<html lang="pt-BR">
+
+  <!--
+    MUNDO DOS NÚMEROS COM O ZECA  ·  guia de leitura deste arquivo
+    ================================================================
+    Este jogo inteiro cabe em UM arquivo. Ele junta as 3 tecnologias da web:
+    
+      1) HTML  → a ESTRUTURA   (o que existe na página: botões, títulos, telas)
+      2) CSS   → a APARÊNCIA   (cores, tamanhos, animações)  → fica dentro de <style>
+      3) JavaScript → o COMPORTAMENTO (o que acontece quando alguém clica,
+                      arrasta, acerta ou erra)               → fica dentro de <script>
+    
+    ORDEM SUGERIDA DE LEITURA
+      a) <body> logo abaixo: é curtinho! Veja que as telas do jogo NÃO estão aqui.
+      b) <style>: leia de cima para baixo; cada bloco tem um comentário.
+      c) <script>: leia as seções na ordem em que aparecem (cada uma começa com
+         uma faixa "=====" e uma explicação do que você vai aprender).
+    
+    CONCEITOS E ONDE VER CADA UM (procure pelo nome da seção)
+      • Variáveis CSS e animações .......... <style> → :root e @keyframes
+      • DOM (criar/alterar elementos) ...... "Utilidades" (função el) e "Roteamento"
+      • Eventos (clique, teclado, ponteiro)  "Teclado numérico" e "Arrastar e soltar"
+      • Canvas 2D (desenhar com código) .... "Zeca, o mascote", "Confete e fundo"
+      • Animação com requestAnimationFrame . "Confete e fundo" e "Roteamento"
+      • Som sem arquivos (WebAudio) ........ "Som (WebAudio, sem arquivos)"
+      • Salvar no navegador (localStorage) . "Estado salvo"
+      • Async/await e Promises .............. função sleep e renderMult → skipCount
+      • Matemática de um mundo 3D .......... "CONTINHAS COM MATERIAL DOURADO 3D"
+      • Geração de problemas aleatórios .... genOuro e os render* de cada atividade
+    
+    COMO EXPERIMENTAR
+      1. Abra este arquivo no navegador (duplo clique) e aperte F12 para ver o console.
+      2. Mude uma cor em :root (ex.: --soma) e atualize a página (F5): viu a diferença?
+      3. No JS, mude o número de missões por rodada (procure "R[id] >= 5") e teste.
+  -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Mundo dos Números com o Zeca</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>"
+    />
+    <style>
+
+      /* VARIÁVEIS CSS (custom properties): definimos cada cor UMA vez aqui e usamos
+         com var(--nome) no resto do CSS. Quer outro tema? Mude só estas linhas!
+         Cada operação tem sempre a MESMA cor (previsibilidade ajuda a aprender). */
+      :root {
+        --ink: #27324a;
+        --soft: #6b7694;
+        --soma: #ff8a5b;
+        --sub: #8b6cff;
+        --mult: #16b8a6;
+        --div: #ff5d8f;
+        --tab: #f2a900;
+        --bal: #3a86ff;
+        --pausa: #6c8cff;
+        --ouro: #d99a00;
+        --home: #3d5a80;
+        --shadow: 0 10px 28px rgba(39, 50, 74, 0.13);
+      }
+
+      /* O seletor * vale para TODOS os elementos. border-box faz width/height já incluírem borda e espaçamento (cálculo de tamanhos fica bem mais simples). */
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      /* 1rem = tamanho da fonte do <html> (20px aqui). Todo texto em "rem" cresce junto quando o botão A+ dos Ajustes muda este valor. */
+      html {
+        font-size: 20px;
+      }
+
+      /* Fundo em degradê (linear-gradient) com "fixed": o fundo não rola junto com a página. */
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Trebuchet MS", "Segoe UI", Verdana, system-ui, sans-serif;
+        color: var(--ink);
+        background: linear-gradient(160deg, #fff6e5 0%, #eaf6ff 55%, #f3ecff 100%);
+        background-attachment: fixed;
+      }
+
+      /* position: fixed + inset: 0 estica o canvas pela tela toda. z-index define quem fica na frente: maior = mais na frente. */
+      #bg {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      /* pointer-events: none deixa os cliques "atravessarem" o confete para chegar nos botões que estão por baixo. */
+      #fx {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 900;
+        pointer-events: none;
+      }
+      #app {
+        position: relative;
+        z-index: 1;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 12px 14px 40px;
+      }
+
+      /* Botões começam sem estilo (sem borda/fundo) para cada tipo de botão decidir seu visual. "font: inherit" faz herdarem a fonte da página. */
+      button {
+        font: inherit;
+        cursor: pointer;
+        border: 0;
+        color: inherit;
+        background: none;
+      }
+
+      /* ACESSIBILIDADE: contorno bem visível quando alguém navega pelo teclado (tecla Tab). */
+      button:focus-visible,
+      input:focus-visible {
+        outline: 4px solid #1b6ef3;
+        outline-offset: 3px;
+      }
+
+      /* Cabeçalho: mascote + balão */
+      /* FLEXBOX: display:flex coloca filhos lado a lado; gap é o espaço entre eles; flex-wrap deixa quebrar linha em telas estreitas. */
+      #top {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      #mascot {
+        width: 150px;
+        height: 150px;
+        flex: none;
+      }
+      #bubble {
+        position: relative;
+        flex: 1 1 280px;
+        min-width: 240px;
+        background: #fff;
+        border-radius: 26px;
+        padding: 16px 20px;
+        font-size: 1.3rem;
+        font-weight: 700;
+        line-height: 1.35;
+        box-shadow: var(--shadow);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        border: 4px solid #ffd166;
+      }
+
+      /* TRUQUE DO TRIÂNGULO: um elemento vazio com bordas grossas e transparentes vira uma "setinha". Aqui é o rabinho do balão de fala. */
+      #bubble::before {
+        content: "";
+        position: absolute;
+        left: -18px;
+        top: 50%;
+        margin-top: -14px;
+        border: 14px solid transparent;
+        border-right: 18px solid #ffd166;
+        border-left: 0;
+      }
+      #bubble.pop {
+        animation: popin 0.35s;
+      }
+      #bubbleText {
+        flex: 1;
+      }
+      .mini {
+        background: #fff4d6;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        font-size: 1.3rem;
+        flex: none;
+      }
+      #hud {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+      }
+      .pill {
+        background: #fff;
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-weight: 800;
+        box-shadow: var(--shadow);
+        font-size: 1.05rem;
+        white-space: nowrap;
+        text-align: center;
+      }
+      @media (max-width: 640px) {
+        #bubble::before {
+          display: none;
+        }
+        #mascot {
+          width: 110px;
+          height: 110px;
+        }
+        #hud {
+          flex-direction: row;
+          width: 100%;
+        }
+        #hud .pill {
+          flex: 1;
+        }
+      }
+
+      /* Abas */
+      /* overflow-x:auto permite rolar as abas para o lado no celular; scroll-snap faz elas "encaixarem" ao rolar. */
+      #tabs {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        padding: 16px 4px 12px;
+        scroll-snap-type: x proximity;
+      }
+
+      /* border-bottom colorida usa var(--c): cada aba define a sua --c direto pelo JavaScript (style.setProperty). */
+      .tab {
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        min-width: 94px;
+        padding: 10px 12px;
+        border-radius: 22px;
+        background: #fff;
+        box-shadow: var(--shadow);
+        font-weight: 800;
+        font-size: 0.85rem;
+        border-bottom: 7px solid var(--c);
+        transition: transform 0.15s;
+        scroll-snap-align: start;
+      }
+      .tab .ic {
+        font-size: 1.9rem;
+      }
+      .tab:hover {
+        transform: translateY(-3px);
+      }
+      .tab.on {
+        background: var(--c);
+        color: #fff;
+        transform: translateY(-3px);
+      }
+
+      /* backdrop-filter: blur() desfoca o que está atrás, dando efeito de vidro fosco. animation: popin faz a tela "surgir" ao trocar de aba. */
+      #stage {
+        background: rgba(255, 255, 255, 0.84);
+        backdrop-filter: blur(6px);
+        border-radius: 32px;
+        padding: 20px;
+        box-shadow: var(--shadow);
+        min-height: 440px;
+        animation: popin 0.3s;
+      }
+      @media (max-width: 640px) {
+        #stage {
+          padding: 12px;
+          border-radius: 24px;
+        }
+      }
+
+      /* Missões */
+      /* Estilos comuns a todas as atividades: cabeçalho da missão, níveis, bolinhas de progresso e a conta em destaque. */
+      .mhead {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        justify-content: space-between;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 4px dashed rgba(0, 0, 0, 0.08);
+      }
+      .mhead h2 {
+        margin: 0;
+        font-size: 1.7rem;
+        color: var(--c);
+      }
+      .levels {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .lvbtn {
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: #eef1f9;
+        font-weight: 800;
+        font-size: 0.85rem;
+      }
+      .lvbtn.on {
+        background: var(--c);
+        color: #fff;
+      }
+      .dots {
+        display: flex;
+        gap: 8px;
+      }
+      .dot {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #e4e8f2;
+        display: grid;
+        place-items: center;
+        font-size: 0.95rem;
+        transition: background 0.3s;
+      }
+      .dot.full {
+        background: #ffd166;
+      }
+
+      /* ::after cria um elemento "virtual" depois do .dot. Quando a bolinha ganha a classe "full", aparece uma estrela via content. */
+      .dot.full::after {
+        content: "⭐";
+      }
+      .story {
+        font-size: 1.5rem;
+        font-weight: 800;
+        text-align: center;
+        margin: 6px 0 10px;
+      }
+      .story b {
+        color: var(--c);
+        font-size: 1.15em;
+      }
+
+      /* Layout da conta (3 + 4 = ?). Cada número é um "cartão" (.n); o resultado (.r) usa a cor da atividade. */
+      .eq {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        font-size: 2.6rem;
+        font-weight: 900;
+        margin: 6px 0 14px;
+        flex-wrap: wrap;
+      }
+      .eq .n {
+        background: #fff;
+        border-radius: 18px;
+        padding: 2px 18px;
+        box-shadow: var(--shadow);
+        min-width: 76px;
+        text-align: center;
+      }
+      .eq .op {
+        color: var(--c);
+      }
+      .eq .r {
+        background: var(--c);
+        color: #fff;
+      }
+      .trays {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .tray {
+        flex: 1 1 280px;
+        background: #fff;
+        border-radius: 24px;
+        padding: 12px;
+        border: 4px dashed rgba(0, 0, 0, 0.1);
+        min-height: 130px;
+      }
+      .tray.A {
+        background: #fff3ec;
+      }
+      .tray.B {
+        background: #eef8ff;
+      }
+      .tray.T {
+        background: #fff;
+        max-width: 860px;
+        margin: 0 auto;
+      }
+      .tlabel {
+        font-weight: 800;
+        font-size: 0.9rem;
+        color: var(--soft);
+        margin-bottom: 6px;
+      }
+      .pile {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        min-height: 58px;
+      }
+      .zone {
+        border-radius: 26px;
+        transition:
+          background 0.15s,
+          box-shadow 0.15s,
+          transform 0.15s;
+      }
+
+      /* Classe aplicada pelo JavaScript enquanto uma peça é arrastada por cima da zona: o brilho avisa "pode soltar aqui!". */
+      .zone.hot {
+        box-shadow:
+          0 0 0 6px var(--c),
+          0 0 30px var(--c);
+        transform: scale(1.02);
+      }
+      .basket {
+        margin: 14px auto;
+        max-width: 760px;
+        min-height: 170px;
+        background: linear-gradient(#fff, #fff7e0);
+        border: 5px solid #f4b860;
+        padding: 14px;
+        position: relative;
+      }
+      .count {
+        position: absolute;
+        right: 14px;
+        top: 10px;
+        background: var(--c);
+        color: #fff;
+        border-radius: 20px;
+        padding: 4px 16px;
+        font-size: 2rem;
+        font-weight: 900;
+        text-align: center;
+        line-height: 1.1;
+      }
+      .count small {
+        display: block;
+        font-size: 0.65rem;
+        font-weight: 700;
+      }
+
+      /* Peças arrastáveis */
+      /* touch-action:none é ESSENCIAL: avisa o navegador do celular para não rolar a página quando o dedo arrasta uma peça. */
+      .tok {
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: grab;
+        transition: transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
+        animation: popin 0.3s;
+      }
+
+      /* Enquanto arrasta: sem transição (acompanha o dedo na hora), z-index alto (fica por cima de tudo) e sombra para parecer que "levantou". */
+      .tok.drag {
+        transition: none;
+        z-index: 1000;
+        position: relative;
+        cursor: grabbing;
+        filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.25));
+      }
+      .tok.emo {
+        font-size: 2.5rem;
+        line-height: 1;
+        padding: 2px;
+      }
+      .tok.sm.emo {
+        font-size: 1.9rem;
+      }
+      .tok.u.cube {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: linear-gradient(#ffb36b, #ff8a3d);
+        border: 3px solid #e8731f;
+      }
+      .tok.t {
+        display: flex;
+        gap: 2px;
+        background: #4dabf7;
+        padding: 4px;
+        border-radius: 10px;
+        border: 3px solid #1c7ed6;
+      }
+
+      /* A barra de 10 é um <div> com 10 <i> dentro, cada um é um quadradinho azul. Desenhar com CSS evita precisar de imagens! */
+      .tok.t i {
+        width: 11px;
+        height: 26px;
+        border-radius: 4px;
+        background: #a5d8ff;
+        display: block;
+      }
+      .tok:not(.drag):hover {
+        transform: translateY(-3px);
+      }
+
+      /* Monstrinho, bandejas, amigos */
+      .monster {
+        margin: 12px auto;
+        max-width: 380px;
+        text-align: center;
+        padding: 10px;
+        background: #f1ecff;
+        border: 5px solid var(--c);
+      }
+      .monster .face {
+        font-size: 5rem;
+        display: inline-block;
+        animation: floaty 2.5s ease-in-out infinite;
+      }
+      .monster.munch .face {
+        animation: munch 0.4s;
+      }
+      .plates,
+      .friends {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin: 16px 0;
+      }
+      .plate {
+        flex: 0 0 180px;
+        background: #fff;
+        border: 5px solid var(--c);
+        padding: 12px 8px 8px;
+        min-height: 140px;
+        position: relative;
+      }
+      .plate .badge {
+        position: absolute;
+        top: -16px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--c);
+        color: #fff;
+        border-radius: 16px;
+        padding: 0 14px;
+        font-weight: 900;
+      }
+      .plate.full {
+        background: #effff6;
+      }
+      .plate.glow {
+        animation: glow 0.8s;
+      }
+      .friend {
+        flex: 0 0 200px;
+        background: #fff;
+        border: 5px solid var(--c);
+        padding: 8px;
+        min-height: 170px;
+        text-align: center;
+      }
+      .fav {
+        font-size: 3rem;
+        line-height: 1.1;
+      }
+      .fname {
+        font-weight: 800;
+        margin-bottom: 4px;
+      }
+      .fname b {
+        background: var(--c);
+        color: #fff;
+        border-radius: 12px;
+        padding: 0 10px;
+      }
+      .friend .pile {
+        justify-content: center;
+      }
+
+      /* Resposta */
+      .ask {
+        max-width: 560px;
+        margin: 16px auto 0;
+        text-align: center;
+      }
+      .question {
+        font-size: 1.6rem;
+        font-weight: 900;
+        margin-bottom: 8px;
+      }
+      .kp {
+        display: inline-block;
+        background: #fff;
+        padding: 14px;
+        border-radius: 26px;
+        box-shadow: var(--shadow);
+      }
+      .kpdisp {
+        font-size: 3rem;
+        font-weight: 900;
+        min-width: 200px;
+        border-radius: 16px;
+        background: #f3f6ff;
+        margin-bottom: 10px;
+        padding: 2px 10px;
+        color: var(--c);
+      }
+
+      /* CSS GRID: 3 colunas de 78px formam o teclado numérico. repeat(3, 78px) é o mesmo que escrever 78px três vezes. */
+      .kpgrid {
+        display: grid;
+        grid-template-columns: repeat(3, 78px);
+        gap: 10px;
+        justify-content: center;
+      }
+      .kpkey {
+        height: 64px;
+        border-radius: 18px;
+        background: #eef1fb;
+        font-size: 1.8rem;
+        font-weight: 900;
+        box-shadow: 0 5px 0 #d3d9ee;
+      }
+      .kpkey:active {
+        transform: translateY(4px);
+        box-shadow: 0 1px 0 #d3d9ee;
+      }
+      .kpkey.ok {
+        background: var(--c);
+        color: #fff;
+        box-shadow: 0 5px 0 rgba(0, 0, 0, 0.2);
+      }
+      .shake {
+        animation: shake 0.4s;
+      }
+      .bigbtn {
+        background: var(--c, #3a86ff);
+        color: #fff;
+        font-weight: 900;
+        padding: 14px 26px;
+        border-radius: 999px;
+        font-size: 1.25rem;
+        box-shadow: 0 6px 0 rgba(0, 0, 0, 0.18);
+        margin: 6px;
+      }
+      .bigbtn:active {
+        transform: translateY(4px);
+        box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
+      }
+      .bigbtn.ghost {
+        background: #fff;
+        color: var(--ink);
+        border: 3px solid #d3d9ee;
+        box-shadow: 0 5px 0 #d3d9ee;
+      }
+      .bigbtn.alt {
+        background: #2ecc71;
+      }
+      .tools {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+      .tool {
+        background: #fff;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-weight: 800;
+        box-shadow: 0 4px 0 #d3d9ee;
+        border: 3px solid #e6eaf7;
+      }
+      .arrbox {
+        margin: 12px auto;
+        background: #fff;
+        border-radius: 20px;
+        padding: 10px 16px;
+        display: inline-block;
+        box-shadow: var(--shadow);
+      }
+      .arrcap {
+        font-weight: 800;
+        color: var(--c);
+      }
+      .arr {
+        display: inline-grid;
+        gap: 6px;
+        margin: 8px;
+      }
+      .arr i {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--c);
+        animation: popin 0.4s backwards;
+      }
+
+      /* Tabuada, balões, pausa */
+      .chips {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin: 8px 0;
+      }
+      .chip {
+        background: #eef1f9;
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-weight: 800;
+      }
+      .chip.on {
+        background: var(--c);
+        color: #fff;
+      }
+      .gridwrap {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: flex-start;
+      }
+      #gc,
+      #fc {
+        border-radius: 20px;
+        background: #fff;
+        box-shadow: var(--shadow);
+        touch-action: none;
+      }
+      .bigeq {
+        font-size: 2.6rem;
+        font-weight: 900;
+        color: var(--c);
+      }
+      .exp {
+        font-size: 1.15rem;
+        font-weight: 700;
+        line-height: 1.55;
+        max-width: 400px;
+      }
+      .choices {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(120px, 200px));
+        gap: 14px;
+        justify-content: center;
+        margin: 12px 0;
+      }
+      .choice {
+        background: #fff;
+        border-radius: 22px;
+        padding: 16px;
+        font-size: 2.2rem;
+        font-weight: 900;
+        box-shadow: 0 6px 0 #d3d9ee;
+        border: 4px solid #e6eaf7;
+      }
+      .choice.right {
+        background: #c9f7dc;
+        border-color: #2ecc71;
+      }
+      .choice.dim {
+        opacity: 0.3;
+        pointer-events: none;
+      }
+      #bc {
+        display: block;
+        margin: 8px auto;
+        border-radius: 24px;
+        background: linear-gradient(#bfe4ff, #eaf8ff 70%, #c8f0c0);
+        box-shadow: var(--shadow);
+        touch-action: manipulation;
+      }
+      #pc {
+        display: block;
+        margin: 0 auto;
+        border-radius: 28px;
+        background: radial-gradient(#26324f, #141b30);
+        touch-action: manipulation;
+      }
+
+      /* Área do material dourado: a continha em pé (esquerda) e o canvas 3D (direita). Em telas estreitas, quebram em duas linhas. */
+      .ouroWrap {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: center;
+      }
+      .contaBox {
+        flex: 0 0 330px;
+        background: #fff;
+        border-radius: 24px;
+        padding: 14px;
+        box-shadow: var(--shadow);
+      }
+
+      /* A "continha armada" também é um GRID: 4 colunas (sinal, C, D, U) e linhas para vai-um, número de cima, de baixo e resultado. */
+      .conta {
+        display: grid;
+        grid-template-columns: 40px repeat(3, 72px);
+        gap: 4px 6px;
+        font-size: 2.4rem;
+        font-weight: 900;
+        justify-items: center;
+        align-items: center;
+      }
+      .conta .cell {
+        width: 68px;
+        height: 56px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        position: relative;
+      }
+      .conta .hd {
+        font-size: 0.9rem;
+        color: var(--soft);
+      }
+      .conta .act {
+        background: #fff3c4;
+        outline: 3px solid #f5c518;
+      }
+      .conta .res {
+        background: #f1f4fc;
+        color: var(--c);
+      }
+      .conta .cr {
+        font-size: 1.1rem;
+        color: #16a05a;
+        height: 26px;
+      }
+      .conta .sgn {
+        color: var(--c);
+        width: 40px;
+      }
+      .conta .line {
+        grid-column: 2/-1;
+        height: 6px;
+        background: var(--ink);
+        border-radius: 4px;
+        width: 100%;
+      }
+      .conta s {
+        font-size: 1rem;
+        color: #c0392b;
+        position: absolute;
+        top: -2px;
+        right: 4px;
+      }
+      .oinfo {
+        margin-top: 10px;
+        font-weight: 800;
+        font-size: 1.05rem;
+        line-height: 1.4;
+        min-height: 3em;
+      }
+      .sceneBox {
+        flex: 1 1 420px;
+        min-width: 300px;
+      }
+      #oc {
+        display: block;
+        border-radius: 24px;
+        background: linear-gradient(#e8f3ff, #fdf6e3);
+        box-shadow: var(--shadow);
+        touch-action: none;
+        cursor: grab;
+      }
+      .hintdrag {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--soft);
+      }
+
+      /* Início */
+      .hello h1 {
+        font-size: 2.2rem;
+        margin: 0 0 4px;
+      }
+      .hello p {
+        margin: 0;
+        font-weight: 700;
+        color: var(--soft);
+      }
+      .sec {
+        font-size: 1.3rem;
+        margin: 22px 0 8px;
+      }
+      .plan {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .step {
+        flex: 1 1 170px;
+        background: #fff;
+        border-radius: 24px;
+        padding: 12px;
+        text-align: center;
+        box-shadow: var(--shadow);
+        border-bottom: 8px solid var(--c);
+        font-weight: 800;
+        transition: transform 0.15s;
+      }
+      .step:hover {
+        transform: translateY(-4px);
+      }
+      .step .stnum {
+        font-size: 0.8rem;
+        color: var(--soft);
+      }
+      .step .stic {
+        font-size: 2.6rem;
+      }
+      .step.done {
+        background: #effff6;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        background: #fff;
+        border-radius: 28px;
+        padding: 18px;
+        text-align: left;
+        box-shadow: var(--shadow);
+        border-left: 14px solid var(--c);
+        transition: transform 0.15s;
+      }
+      .card:hover {
+        transform: translateY(-5px) rotate(-1deg);
+      }
+      .card .ic {
+        font-size: 2.8rem;
+        line-height: 1;
+      }
+      .card h3 {
+        margin: 6px 0 2px;
+        font-size: 1.3rem;
+        color: var(--c);
+      }
+      .card p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--soft);
+        font-weight: 700;
+      }
+      .achs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .ach {
+        background: #fff;
+        border-radius: 18px;
+        padding: 10px 14px;
+        font-weight: 800;
+        box-shadow: var(--shadow);
+      }
+      .ach.lock {
+        opacity: 0.45;
+        filter: grayscale(1);
+      }
+      .progress {
+        height: 18px;
+        background: #e9edf8;
+        border-radius: 99px;
+        overflow: hidden;
+        margin-top: 10px;
+      }
+      .progress i {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #ffd166, #ff8a5b);
+        transition: width 0.5s;
+      }
+
+      /* Diálogos */
+      dialog {
+        border: 0;
+        border-radius: 30px;
+        padding: 24px;
+        max-width: 480px;
+        width: 92%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+        font-size: 1rem;
+        color: var(--ink);
+      }
+      dialog::backdrop {
+        background: rgba(30, 40, 70, 0.45);
+      }
+      dialog h2 {
+        margin-top: 0;
+      }
+      .set {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
+        font-weight: 800;
+        border-bottom: 2px solid #eef1fa;
+      }
+      .switch {
+        width: 64px;
+        height: 34px;
+        border-radius: 99px;
+        background: #cfd6ea;
+        position: relative;
+        flex: none;
+      }
+      .switch::after {
+        content: "";
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: #fff;
+        transition: 0.2s;
+      }
+      .switch.on {
+        background: #2ecc71;
+      }
+      .switch.on::after {
+        left: 34px;
+      }
+      .dlgbtns {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        margin-top: 14px;
+      }
+
+      /* @keyframes descreve uma animação por etapas (from → to). Depois é só usar "animation: popin .3s" em qualquer elemento. */
+      @keyframes popin {
+        from {
+          transform: scale(0.4);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      @keyframes floaty {
+        0%,
+        100% {
+          transform: translateY(0) rotate(-3deg);
+        }
+        50% {
+          transform: translateY(-10px) rotate(3deg);
+        }
+      }
+      @keyframes munch {
+        0% {
+          transform: scale(1);
+        }
+        30% {
+          transform: scale(1.35, 0.8);
+        }
+        60% {
+          transform: scale(0.9, 1.2);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-8px);
+        }
+        75% {
+          transform: translateX(8px);
+        }
+      }
+      @keyframes glow {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 transparent;
+        }
+        40% {
+          box-shadow:
+            0 0 0 10px var(--c),
+            0 0 40px var(--c);
+        }
+      }
+
+      /* Modo calmo: sem animações contínuas */
+      /* O modo calmo (botão nos Ajustes) coloca a classe "calm" no <body>; esta regra desliga TODAS as animações. Ótimo exemplo de CSS controlado por JavaScript. */
+      body.calm * {
+        animation: none !important;
+      }
+      body.calm .tok,
+      body.calm .zone {
+        transition: none;
+      }
+
+      /* Media query de ACESSIBILIDADE: se o sistema do usuário pede "menos movimento", respeitamos automaticamente. */
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+
+    <!--
+      DUAS CAMADAS DE CANVAS cobrem a tela inteira (ver CSS #bg e #fx):
+        • #bg → símbolos de matemática flutuando ao fundo (fica ATRÁS de tudo)
+        • #fx → confete de comemoração (fica NA FRENTE, mas não bloqueia cliques)
+      <canvas> é uma "folha de desenho": o JavaScript pinta nela pixel por pixel.
+      aria-hidden="true" avisa leitores de tela que é só enfeite.
+    -->
+    <canvas id="bg" aria-hidden="true"></canvas>
+    <canvas id="fx" aria-hidden="true"></canvas>
+
+    <!--
+      Container principal. O resto do jogo é montado AQUI DENTRO pelo JavaScript:
+      cabeçalho (mascote + balão), abas e a "tela" (stage) da atividade atual.
+    -->
+    <div id="app">
+      <header id="top">
+
+        <!--
+          O Zeca é desenhado com código neste canvas (veja drawMascot no script). O aria-label descreve a imagem para quem usa leitor de tela.
+        -->
+        <canvas id="mascot" width="300" height="300" aria-label="Zeca, o robô amigo"></canvas>
+
+        <!--
+          Balão de fala. role="status" + aria-live="polite" fazem leitores de tela anunciarem cada mensagem nova sem interromper.
+        -->
+        <div id="bubble" role="status" aria-live="polite">
+          <span id="bubbleText">Oi! Eu sou o Zeca!</span>
+          <button class="mini" id="speakBtn" title="Ouvir de novo" aria-label="Ouvir de novo">🔊</button>
+        </div>
+        <div id="hud">
+          <div class="pill">⭐ <b id="starCount">0</b> estrelas</div>
+          <button class="pill" id="settingsBtn">⚙️ Ajustes</button>
+          <button class="pill" id="calmBtn">🌙 Preciso de uma pausa</button>
+        </div>
+      </header>
+
+      <!--
+        Vazio de propósito! As abas (Início, Somar, ...) são criadas pelo JavaScript
+        na função init(), a partir do objeto MODS. Assim, para criar uma aba nova
+        basta cadastrar uma atividade em MODS.
+      -->
+      <nav id="tabs" aria-label="Atividades"></nav>
+
+      <!--
+        A "tela" da atividade. A função go(id) apaga o conteúdo daqui e desenha a atividade escolhida.
+      -->
+      <main id="stage"></main>
+    </div>
+
+    <!--
+      <dialog> é um elemento nativo para janelinhas (modais). O JavaScript chama
+      showModal() para abrir e close() para fechar. Ele escurece o fundo sozinho.
+    -->
+    <dialog id="settings"></dialog>
+    <dialog id="roundDlg"></dialog>
+
+    <!--
+      Daqui para baixo é JavaScript: o "cérebro" do jogo.
+    -->
+    <script>
+      "use strict";
+      //
+      // MAPA DO SCRIPT (de cima para baixo)
+      //   1. Utilidades ......... funções pequenas e dados que todo o resto usa
+      //   2. Estado salvo ....... guarda estrelas, nome e ajustes no navegador
+      //   3. Som e Voz .......... sons criados por código e leitura em voz alta
+      //   4. Mascote e efeitos .. desenhos no Canvas (Zeca, confete, fundo)
+      //   5. Roteamento ......... troca de abas, laços de animação, recompensas
+      //   6. Teclado e arrastar . componentes reutilizáveis pelas atividades
+      //   7. Atividades ......... Somar, Subtrair, Multiplicar, Dividir, 3D, Tabuada...
+      //   8. Início do app ...... init() liga tudo quando a página abre
+      //
+      // DICA: "use strict" (acima) liga o modo estrito: erros bobos, como usar uma
+      // variável não declarada, viram avisos claros em vez de passarem batido.
+      //
+      /* ===================== Utilidades ===================== */
+      // Aqui ficam "ferramentas" pequenas. Repare no padrão: funções curtas, com nome
+      // claro, que fazem UMA coisa. Isso se chama reaproveitar código (não repetir).
+      // Atalho: $("#stage") em vez de document.querySelector("#stage"). O 2º parâmetro (r = document) é um VALOR PADRÃO: se não passarem nada, busca na página toda.
+      const $ = (s, r = document) => r.querySelector(s);
+
+      // Cria um elemento HTML: el("div", "card", "<b>Oi</b>").
+      // document.createElement cria; className define as classes CSS; innerHTML define o conteúdo.
+      const el = (tag, cls, html) => {
+        const e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (html != null) e.innerHTML = html;
+        return e;
+      };
+
+      // Número inteiro aleatório entre a e b (incluindo os dois). Math.random() dá um decimal de 0 até quase 1; multiplicamos e arredondamos para baixo com Math.floor.
+      const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+
+      // Sorteia um item de uma lista: pick(["🍎","🍌"]).
+      const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+      // Embaralha uma lista (algoritmo de Fisher-Yates): percorre de trás para frente trocando cada item com outro sorteado. a.slice() faz uma CÓPIA para não estragar a lista original.
+      const shuffle = (a) => {
+        a = a.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = rnd(0, i);
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      };
+
+      // Pausa assíncrona: "await sleep(500)" espera meio segundo SEM travar a página.
+      // Promise = "promessa de um resultado no futuro"; setTimeout chama resolve depois do tempo.
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      // SEGURANÇA: troca caracteres especiais (< > & ") por versões inofensivas. Sem isso, um nome como <b>oi</b> viraria HTML de verdade ao ser colocado na página.
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"']/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+        );
+
+      // Dados em listas e objetos: para mudar textos, cores ou emojis, não precisa mexer na lógica do jogo, só nestas listas.
+      const COLORS = ["#ff8a5b", "#8b6cff", "#16b8a6", "#ff5d8f", "#ffb703", "#3a86ff", "#2ecc71"];
+      const FOODS = ["🍎", "🍓", "🍪", "🍌", "🍩", "🍇", "🍊", "🧁"];
+      const FRIENDS = [
+        ["🐶", "Totó"],
+        ["🐱", "Mimi"],
+        ["🐰", "Pipoca"],
+        ["🐻", "Bento"],
+        ["🦊", "Raposo"],
+        ["🐼", "Panda"],
+      ];
+      const PRAISE = [
+        "Isso! Você mandou muito bem!",
+        "Perfeito! Que cérebro incrível!",
+        "Acertou! Estou orgulhoso!",
+        "Uhuul! Mais uma estrela!",
+        "Show! Você pegou o jeito!",
+        "Muito bem! Calma e firmeza, né?",
+      ];
+      const AGAIN = [
+        "Nova missão! Respire e vamos lá.",
+        "Pronto para a próxima? Vamos nessa!",
+        "Mais uma aventura começando!",
+      ];
+
+      // OBJETO usado como DICIONÁRIO: INTRO.soma devolve a frase de abertura da atividade "soma". A chave (soma) busca o valor (o texto).
+      const INTRO = {
+        soma: "Vamos somar! Leve as peças para a cesta e depois digite o total.",
+        sub: "Vamos subtrair! Alimente o Gulosinho e veja o que sobra.",
+        mult: "Multiplicar é juntar grupos iguais! Coloque a mesma quantidade em cada bandeja.",
+        div: "Dividir é repartir igualzinho! Dê as peças para cada amigo.",
+        ouro: "Vamos armar continhas com o material dourado! Você pode girar as peças com o dedo ou o mouse.",
+        tab: "Aqui você descobre os segredos da tabuada. Escolha uma aba!",
+        bal: "Estoure o balão com a resposta certa. Sem pressa e sem perder pontos!",
+        pausa: "Vamos respirar juntos. Siga o círculo com os olhos.",
+      };
+      const ACH = [
+        [10, "🎉", "Chapéu de festa"],
+        [25, "👑", "Coroa"],
+        [50, "😎", "Óculos escuros"],
+        [100, "🦸", "Capa de herói"],
+      ];
+
+      // Plano do dia: lista de listas, uma para cada dia da semana (0 = domingo ... 6 = sábado). Usamos new Date().getDay() para escolher a de hoje.
+      const PLANS = [
+        ["soma", "pausa", "bal"],
+        ["soma", "pausa", "mult"],
+        ["sub", "pausa", "div"],
+        ["soma", "pausa", "tab"],
+        ["mult", "pausa", "bal"],
+        ["div", "pausa", "sub"],
+        ["tab", "pausa", "bal"],
+      ];
+
+      /* ===================== Estado salvo ===================== */
+      // ESTADO = tudo que o jogo precisa lembrar. Guardamos em UM objeto (S) e o
+      // salvamos no localStorage: um "caderninho" do navegador que sobrevive quando
+      // a página é fechada. Só aceita TEXTO, por isso usamos JSON.stringify (objeto →
+      // texto) para salvar e JSON.parse (texto → objeto) para ler.
+      // Nome da "gaveta" do localStorage onde guardamos o progresso. Mudar o número da versão (v1) começaria um progresso novo.
+      const KEY = "mundo-dos-numeros-v1";
+
+      // O objeto de estado. Valores iniciais = o que um jogador novo vê.
+      const S = {
+        stars: 0,
+        name: "",
+        sound: true,
+        voice: false,
+        calm: false,
+        fs: 20,
+        levels: {},
+        dayKey: "",
+        doneToday: {},
+        tabSub: "grade",
+        frogN: 2,
+        trainT: 0,
+        trainInv: false,
+        balOps: ["+"],
+        balSlow: true,
+        ouroOp: "mix",
+      };
+
+      // Lê o progresso salvo. try/catch protege: se o navegador bloquear o localStorage (aba anônima, por ex.), o jogo continua funcionando sem salvar.
+      function load() {
+        let raw = null;
+        try {
+          raw = localStorage.getItem(KEY);
+        } catch (e) {}
+        if (raw) {
+          try {
+            Object.assign(S, JSON.parse(raw));
+          } catch (e) {}
+        } else if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) S.calm = true;
+      }
+
+      function save() {
+        try {
+          localStorage.setItem(KEY, JSON.stringify(S));
+        } catch (e) {}
+      }
+
+      // Chave do dia no formato "2026-10-10". Serve para saber se o plano de hoje já foi feito (zera a cada dia).
+      function today() {
+        const d = new Date();
+        return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+      }
+
+      function isDone(id) {
+        if (S.dayKey !== today()) {
+          S.dayKey = today();
+          S.doneToday = {};
+        }
+        return !!S.doneToday[id];
+      }
+
+      function markDone(id) {
+        isDone(id);
+        S.doneToday[id] = true;
+        save();
+      }
+
+      // Aplica os ajustes na tela: classList.toggle liga/desliga a classe "calm" no <body> e style.fontSize muda o tamanho base das letras.
+      function applyPrefs() {
+        document.body.classList.toggle("calm", !!S.calm);
+        document.documentElement.style.fontSize = S.fs + "px";
+      }
+
+      /* ===================== Som (WebAudio, sem arquivos) ===================== */
+      // Todos os sons são SINTETIZADOS por código com a Web Audio API: nada de arquivos
+      // .mp3! Um som é uma onda (oscillator) que passa por um controle de volume
+      // (gain) até chegar nos alto-falantes (destination).
+      // AudioContext = a "mesa de som". Só pode ser criado/ativado depois de um clique do usuário (regra dos navegadores contra sons surpresa), por isso é criado sob demanda em ac().
+      let AC = null;
+
+      function ac() {
+        if (!S.sound) return null;
+        try {
+          if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+          if (AC.state === "suspended") AC.resume();
+        } catch (e) {
+          return null;
+        }
+        return AC;
+      }
+
+      // Toca UMA nota.
+      //   f = frequência em Hz (quanto maior, mais agudo)   d = duração em segundos
+      //   type = formato da onda: "sine" suave, "triangle" macia, "square" áspera
+      //   vol = volume   delay = espera antes de tocar   slide = quanto a nota sobe/desce
+      // O volume nasce quase em 0, sobe rápido e desce suave (envelope): sem isso
+      // ouviríamos "cliques" feios no começo e no fim da nota.
+      function tone(f, d = 0.15, type = "sine", vol = 0.15, delay = 0, slide = 0) {
+        const a = ac();
+        if (!a) return;
+        const t = a.currentTime + delay;
+        const o = a.createOscillator(),
+          g = a.createGain();
+        o.type = type;
+        o.frequency.setValueAtTime(f, t);
+        if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, f + slide), t + d);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        o.connect(g);
+        g.connect(a.destination);
+        o.start(t);
+        o.stop(t + d + 0.05);
+      }
+
+      // Converte "semitons acima do Dó central" em frequência. Cada semitom multiplica a frequência por 2^(1/12): é a matemática da música!
+      const NT = (i) => 261.63 * Math.pow(2, i / 12);
+
+      // Semitons da escala de Dó maior (dó, ré, mi, fá, sol, lá, si...). Usada para os sons de contagem subirem "cantando".
+      const SC = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19];
+
+      // Efeitos sonoros do jogo. Os sons de ERRO são baixos e suaves de propósito (nada de buzina). Repare nos acordes: SFX.good toca 4 notas em sequência (um arpejo).
+      const SFX = {
+        click() {
+          tone(NT(12), 0.06, "triangle", 0.07);
+        },
+        pick() {
+          tone(NT(7), 0.08, "sine", 0.1);
+        },
+        count(i) {
+          tone(NT(SC[i % 12]), 0.16, "triangle", 0.16);
+        },
+        good() {
+          [0, 4, 7, 12].forEach((s, i) => tone(NT(s + 12), 0.18, "triangle", 0.14, i * 0.09));
+        },
+        star() {
+          [12, 16, 19, 24].forEach((s, i) => tone(NT(s), 0.2, "sine", 0.1, i * 0.08));
+        },
+        oops() {
+          tone(NT(5), 0.18, "sine", 0.07);
+          tone(NT(0), 0.26, "sine", 0.07, 0.15);
+        },
+        munch() {
+          tone(220, 0.09, "square", 0.05, 0, -100);
+          tone(170, 0.09, "square", 0.05, 0.09, -70);
+        },
+        pop() {
+          tone(520, 0.1, "sine", 0.18, 0, -300);
+        },
+        softpop() {
+          tone(700, 0.12, "sine", 0.07, 0, -250);
+        },
+      };
+
+      /* ===================== Voz ===================== */
+      // Leitura em voz alta usando a voz do próprio aparelho (SpeechSynthesis). Não envia nada pela internet.
+      let lastSaid = "";
+
+      // Antes de falar, trocamos símbolos por palavras (× → "vezes") e removemos emojis com uma expressão regular (regex): \p{L} = qualquer letra, \p{N} = qualquer número.
+      function speak(t) {
+        if (!("speechSynthesis" in window)) return;
+        try {
+          speechSynthesis.cancel();
+          t = t
+            .replace(/×/g, " vezes ")
+            .replace(/÷/g, " dividido por ")
+            .replace(/\+/g, " mais ")
+            .replace(/[−–]/g, " menos ")
+            .replace(/=/g, " é igual a ");
+          const u = new SpeechSynthesisUtterance(t.replace(/[^\p{L}\p{N}\s.,!?]/gu, " "));
+          u.lang = "pt-BR";
+          u.rate = 0.95;
+          u.pitch = 1.15;
+          speechSynthesis.speak(u);
+        } catch (e) {}
+      }
+
+      /* ===================== Zeca, o mascote (Canvas) ===================== */
+      // CANVAS 2D: o contexto (getContext("2d")) é o nosso "pincel". Comandos que usamos:
+      //   fillStyle / strokeStyle ... cor de preenchimento / de contorno
+      //   beginPath() + arc/moveTo/lineTo ... descrevem uma forma; fill()/stroke() pintam
+      //   translate / rotate / scale ........ movem, giram e ampliam o "papel"
+      //   save() / restore() ................ guardam / devolvem o estado do pincel
+      // O desenho é feito do fundo para a frente: o que é pintado depois cobre o anterior.
+      const mc = $("#mascot"),
+        mg = mc.getContext("2d");
+
+      // Estado do humor do Zeca: "happy", "think" ou "cheer" (comemorando). "until" é até que instante o humor vale antes de voltar ao normal.
+      const M = { mood: "happy", until: 0, blinkT: -9, blinkNext: 2 };
+
+      // Retângulo com cantos arredondados. O canvas não tem isso pronto, então montamos com arcTo (curvas nos cantos).
+      function rr(g, x, y, w, h, r) {
+        g.beginPath();
+        g.moveTo(x + r, y);
+        g.arcTo(x + w, y, x + w, y + h, r);
+        g.arcTo(x + w, y + h, x, y + h, r);
+        g.arcTo(x, y + h, x, y, r);
+        g.arcTo(x, y, x + w, y, r);
+        g.closePath();
+      }
+
+      // Desenha um braço: save() guarda a posição, translate/rotate giram em torno do ombro, e restore() desfaz tudo para o próximo desenho não ser afetado.
+      function arm(g, x, y, a) {
+        g.save();
+        g.translate(x, y);
+        g.rotate(a);
+        g.fillStyle = "#35c9b7";
+        g.strokeStyle = "#1e9c8d";
+        g.lineWidth = 5;
+        rr(g, -9, -6, 18, 52, 9);
+        g.fill();
+        g.stroke();
+        g.fillStyle = "#ffd166";
+        g.beginPath();
+        g.arc(0, 52, 13, 0, 7);
+        g.fill();
+        g.stroke();
+        g.restore();
+      }
+
+      // Desenha UM quadro do Zeca. Esta função roda ~60 vezes por segundo (ver mloop),
+      // e cada vez apaga tudo e desenha de novo, com pequenas diferenças: é assim que
+      // nasce uma animação!
+      function drawMascot(now) {
+        const g = mg,
+          s = mc.width / 260,
+          t = now / 1000;
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.clearRect(0, 0, mc.width, mc.height);
+        g.scale(s, s);
+        if (M.mood !== "happy" && now > M.until) M.mood = "happy";
+        const cheer = M.mood === "cheer",
+          think = M.mood === "think",
+          calm = S.calm;
+        if (t > M.blinkNext) {
+          M.blinkT = t;
+          M.blinkNext = t + 2 + Math.random() * 3;
+        }
+
+        // Piscada: uma função "triângulo" que vai de 0 a 1 e volta em 0,16s. Multiplicada pela altura dos olhos, ela os fecha rapidinho. A cada 2 a 5 segundos sorteamos a próxima.
+        const bl = Math.max(0, 1 - Math.abs(t - M.blinkT - 0.08) / 0.08);
+
+        // "bob" = sobe-e-desce do corpo. Math.sin(t) oscila suavemente entre -1 e 1, perfeito para movimentos de "respirar". Quando comemora, usamos |sin| para pulinhos.
+        const bob = cheer ? -Math.abs(Math.sin(t * 8)) * (calm ? 5 : 18) : Math.sin(t * 2) * (calm ? 1.5 : 5);
+        g.fillStyle = "rgba(0,0,0,.12)";
+        g.beginPath();
+        g.ellipse(130, 242, 68 + bob * 0.6, 9, 0, 0, 7);
+        g.fill();
+
+        // A partir daqui tudo é desenhado deslocado "bob" pixels na vertical, então o corpo inteiro sobe e desce junto. A sombra foi desenhada ANTES, por isso fica parada no chão.
+        g.translate(0, bob);
+        g.lineCap = "round";
+        if (S.stars >= 100) {
+          g.fillStyle = "#e63946";
+          g.beginPath();
+          g.moveTo(66, 110);
+          g.lineTo(26 + Math.sin(t * 3) * 6, 232);
+          g.lineTo(234 - Math.sin(t * 3) * 6, 232);
+          g.lineTo(194, 110);
+          g.closePath();
+          g.fill();
+        }
+        const ax = 130 + Math.sin(t * 3) * 4;
+        g.strokeStyle = "#1e9c8d";
+        g.lineWidth = 6;
+        g.beginPath();
+        g.moveTo(130, 56);
+        g.lineTo(ax, 28);
+        g.stroke();
+        g.fillStyle = cheer ? "#ffd166" : "#ff5d8f";
+        g.beginPath();
+        g.arc(ax, 20, 10 + (cheer ? 3 * Math.sin(t * 14) : 0), 0, 7);
+        g.fill();
+        const wave = cheer ? 2.5 + Math.sin(t * 12) * 0.35 : 0.15 + Math.sin(t * 2) * 0.08;
+        arm(g, 52, 150, wave);
+        arm(g, 208, 150, -wave);
+        const gr = g.createLinearGradient(0, 52, 0, 220);
+        gr.addColorStop(0, "#4be0cc");
+        gr.addColorStop(1, "#25a999");
+        g.fillStyle = gr;
+        g.strokeStyle = "#1e9c8d";
+        g.lineWidth = 6;
+        rr(g, 48, 54, 164, 164, 62);
+        g.fill();
+        g.stroke();
+        g.fillStyle = "#16324f";
+        rr(g, 70, 80, 120, 92, 34);
+        g.fill();
+        const ex = think ? 5 : 0,
+          ey = think ? -5 : 0;
+        [104, 156].forEach((x) => {
+          if (cheer) {
+            g.strokeStyle = "#7ff3ff";
+            g.lineWidth = 7;
+            g.beginPath();
+            g.arc(x, 124, 11, Math.PI * 1.1, Math.PI * 1.9);
+            g.stroke();
+          } else {
+            g.fillStyle = "#7ff3ff";
+            g.beginPath();
+            g.ellipse(x + ex, 116 + ey, 12, Math.max(1.5, 15 * (1 - bl)), 0, 0, 7);
+            g.fill();
+          }
+        });
+        if (cheer) {
+          g.fillStyle = "#ff8aa0";
+          g.beginPath();
+          g.arc(130, 142, 17, 0, Math.PI);
+          g.closePath();
+          g.fill();
+        } else if (think) {
+          g.fillStyle = "#7ff3ff";
+          g.beginPath();
+          g.arc(138, 150, 6, 0, 7);
+          g.fill();
+        } else {
+          g.strokeStyle = "#7ff3ff";
+          g.lineWidth = 6;
+          g.beginPath();
+          g.arc(130, 136, 18, 0.2, Math.PI - 0.2);
+          g.stroke();
+        }
+        g.fillStyle = "rgba(255,138,160,.55)";
+        [84, 176].forEach((x) => {
+          g.beginPath();
+          g.arc(x, 152, 8, 0, 7);
+          g.fill();
+        });
+        ["#ff8a5b", "#8b6cff", "#16b8a6", "#ff5d8f"].forEach((c, i) => {
+          g.fillStyle = c;
+          g.beginPath();
+          g.arc(96 + i * 23, 196, 8, 0, 7);
+          g.fill();
+        });
+        if (S.stars >= 50) {
+          g.fillStyle = "rgba(10,10,20,.9)";
+          rr(g, 82, 98, 44, 30, 12);
+          g.fill();
+          rr(g, 134, 98, 44, 30, 12);
+          g.fill();
+          g.fillRect(124, 106, 12, 6);
+          g.fillStyle = "rgba(255,255,255,.45)";
+          g.fillRect(90, 104, 10, 5);
+          g.fillRect(142, 104, 10, 5);
+        }
+        if (S.stars >= 25) {
+          g.fillStyle = "#ffd166";
+          g.strokeStyle = "#e0a100";
+          g.lineWidth = 4;
+          g.beginPath();
+          g.moveTo(98, 58);
+          g.lineTo(98, 34);
+          g.lineTo(114, 48);
+          g.lineTo(130, 28);
+          g.lineTo(146, 48);
+          g.lineTo(162, 34);
+          g.lineTo(162, 58);
+          g.closePath();
+          g.fill();
+          g.stroke();
+        } else if (S.stars >= 10) {
+          g.fillStyle = "#ff5d8f";
+          g.strokeStyle = "#c93a6a";
+          g.lineWidth = 4;
+          g.beginPath();
+          g.moveTo(142, 60);
+          g.lineTo(186, 68);
+          g.lineTo(168, 12);
+          g.closePath();
+          g.fill();
+          g.stroke();
+          g.fillStyle = "#ffd166";
+          g.beginPath();
+          g.arc(168, 12, 8, 0, 7);
+          g.fill();
+        }
+      }
+
+      // O LAÇO DE ANIMAÇÃO: requestAnimationFrame pede ao navegador "me chame de novo
+      // antes de desenhar o próximo quadro". A função chama a si mesma e vira um ciclo.
+      // O parêntese em volta + "()" no final executam a função imediatamente (IIFE).
+      (function mloop(now) {
+        drawMascot(now);
+        requestAnimationFrame(mloop);
+      })(performance.now());
+
+      let lastBubble = null;
+
+      // Faz o Zeca falar: troca o texto do balão, muda o humor e (se ligado) lê em voz alta.
+      // O truque "void b.offsetWidth" força o navegador a recalcular o layout, para a
+      // animação CSS "pop" REINICIAR mesmo quando a classe já estava lá.
+      function say(text, mood = "happy") {
+        lastSaid = text;
+        $("#bubbleText").textContent = text;
+        M.mood = mood;
+        M.until = performance.now() + (mood === "cheer" ? 3500 : 4500);
+        const b = $("#bubble");
+        b.classList.remove("pop");
+        void b.offsetWidth;
+        b.classList.add("pop");
+        if (S.voice) speak(text);
+      }
+
+      /* ===================== Confete e fundo ===================== */
+      // Sistema de PARTÍCULAS: milhares de pontinhos, cada um com posição, velocidade e vida. Atualizamos todos a cada quadro (física simples) e desenhamos.
+      const fx = $("#fx"),
+        fctx = fx.getContext("2d"),
+        bg = $("#bg"),
+        bctx = bg.getContext("2d");
+      let parts = [],
+        fxOn = false,
+        syms = [];
+
+      // O canvas tem um tamanho em pixels (width/height) que precisa acompanhar a janela. Também sorteamos os símbolos do fundo, mais ou menos um por área da tela.
+      function sizeCanvases() {
+        fx.width = innerWidth;
+        fx.height = innerHeight;
+        bg.width = innerWidth;
+        bg.height = innerHeight;
+        syms = Array.from({ length: Math.round((innerWidth * innerHeight) / 42000) + 10 }, () => ({
+          x: Math.random() * bg.width,
+          y: Math.random() * bg.height,
+          s: rnd(28, 70),
+          v: 0.08 + Math.random() * 0.2,
+          r: Math.random() * 6,
+          vr: (Math.random() - 0.5) * 0.004,
+          t: pick("+−×÷=0123456789".split("")),
+          c: pick(COLORS),
+        }));
+      }
+
+      // Fundo animado: cada símbolo sobe devagar (y diminui) e gira um pouquinho. Quando sai por cima, reaparece embaixo. No modo calmo, ficam parados.
+      function bgLoop() {
+        bctx.clearRect(0, 0, bg.width, bg.height);
+        for (const s of syms) {
+          bctx.save();
+          bctx.translate(s.x, s.y);
+          bctx.rotate(s.r);
+          bctx.globalAlpha = 0.11;
+          bctx.fillStyle = s.c;
+          bctx.font = `900 ${s.s}px "Trebuchet MS",sans-serif`;
+          bctx.textAlign = "center";
+          bctx.fillText(s.t, 0, 0);
+          bctx.restore();
+          if (!S.calm) {
+            s.y -= s.v;
+            s.r += s.vr;
+            if (s.y < -80) s.y = bg.height + 80;
+          }
+        }
+        requestAnimationFrame(bgLoop);
+      }
+
+      // Cria as partículas: sorteia velocidade (vx, vy), tamanho, cor e vida de cada uma. No modo calmo, poucas peças. Só liga o laço de animação se ele ainda não estiver rodando.
+      function confetti(n = 100) {
+        if (S.calm) n = Math.min(n, 18);
+        const x = innerWidth / 2,
+          y = innerHeight * 0.3;
+        for (let i = 0; i < n; i++)
+          parts.push({
+            x: x + (Math.random() - 0.5) * 240,
+            y,
+            vx: (Math.random() - 0.5) * 16,
+            vy: -Math.random() * 15 - 3,
+            s: rnd(6, 12),
+            r: Math.random() * 6,
+            vr: (Math.random() - 0.5) * 0.4,
+            c: pick(COLORS),
+            life: rnd(80, 140),
+            sh: rnd(0, 1),
+          });
+        if (!fxOn) {
+          fxOn = true;
+          requestAnimationFrame(fxLoop);
+        }
+      }
+
+      // Física do confete a cada quadro:
+      //   vy += gravidade (cai cada vez mais rápido)    x += vx, y += vy (movimento)
+      //   vx *= 0.985 (atrito do ar)    life-- (vai sumindo)
+      // Quando acabam as partículas, o laço PARA (não gasta bateria à toa).
+      function fxLoop() {
+        fctx.clearRect(0, 0, fx.width, fx.height);
+        parts = parts.filter((p) => p.life > 0);
+        for (const p of parts) {
+          p.vy += 0.45;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vx *= 0.985;
+          p.r += p.vr;
+          p.life--;
+          fctx.save();
+          fctx.globalAlpha = Math.min(1, p.life / 30);
+          fctx.translate(p.x, p.y);
+          fctx.rotate(p.r);
+          fctx.fillStyle = p.c;
+          if (p.sh) fctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2);
+          else {
+            fctx.beginPath();
+            fctx.arc(0, 0, p.s / 2, 0, 7);
+            fctx.fill();
+          }
+          fctx.restore();
+        }
+        if (parts.length) requestAnimationFrame(fxLoop);
+        else {
+          fxOn = false;
+          fctx.clearRect(0, 0, fx.width, fx.height);
+        }
+      }
+
+      /* ===================== Roteamento e laços de animação ===================== */
+      // "Roteamento" = decidir qual tela mostrar. Nosso mini-roteador é a função go().
+      // Como cada atividade pode iniciar animações próprias, guardamos tudo que precisa
+      // ser desligado ao trocar de aba.
+      // Variáveis de controle do app:
+      //   SID ........ "número da tela atual". Aumenta a cada go(). Códigos assíncronos
+      //                (que esperam um tempo) guardam o SID de quando começaram e
+      //                desistem se ele mudou: assim nada acontece "na tela errada".
+      //   loops ...... lista de animações em andamento (para parar todas ao sair)
+      //   onResize ... função da atividade atual para reagir ao redimensionar a janela
+      //   activeKeypad teclado numérico em uso (para aceitar o teclado físico)
+      let SID = 0,
+        loops = [],
+        onResize = null,
+        activeKeypad = null;
+      const R = {},
+        introduced = new Set();
+
+      // Desliga todas as animações da atividade anterior (cada uma tem uma chave "on" que o laço consulta).
+      function cancelLoops() {
+        loops.forEach((l) => (l.on = false));
+        loops = [];
+      }
+
+      // Ajudante para animações: chama fn(dt, now) a cada quadro, onde dt = segundos
+      // desde o quadro anterior. Usar dt (e não "1 passo por quadro") faz a animação ter
+      // a MESMA velocidade em computadores rápidos e lentos. Math.min(.05, ...) evita
+      // um "salto" gigante se a aba ficou escondida por um tempo.
+      function loop(fn) {
+        const l = { on: true, last: performance.now() };
+        loops.push(l);
+        const f = (now) => {
+          if (!l.on) return;
+          const dt = Math.min(0.05, (now - l.last) / 1000);
+          l.last = now;
+          fn(dt, now);
+          requestAnimationFrame(f);
+        };
+        requestAnimationFrame(f);
+        return l;
+      }
+
+      // O CATÁLOGO de atividades. Cada item tem nome, ícone, cor e a função "render" que
+      // desenha a atividade. Para criar uma atividade nova: escreva uma função
+      // renderMinhaAtividade(stage) e cadastre uma linha aqui!
+      const MODS = {
+        home: { id: "home", name: "Início", icon: "🏠", color: "var(--home)", render: renderHome },
+        soma: {
+          id: "soma",
+          name: "Somar",
+          icon: "➕",
+          color: "var(--soma)",
+          title: "Fábrica de Somar",
+          desc: "Junte grupos na cesta e descubra o total.",
+          render: renderSoma,
+        },
+        sub: {
+          id: "sub",
+          name: "Subtrair",
+          icon: "➖",
+          color: "var(--sub)",
+          title: "O Gulosinho",
+          desc: "Alimente o monstrinho e veja o que sobra.",
+          render: renderSub,
+        },
+        mult: {
+          id: "mult",
+          name: "Multiplicar",
+          icon: "✖️",
+          color: "var(--mult)",
+          title: "Bandejas Mágicas",
+          desc: "Monte grupos iguais e veja a multiplicação.",
+          render: renderMult,
+        },
+        div: {
+          id: "div",
+          name: "Dividir",
+          icon: "➗",
+          color: "var(--div)",
+          title: "Hora do Lanche",
+          desc: "Reparta igualzinho entre os amigos.",
+          render: renderDiv,
+        },
+        ouro: {
+          id: "ouro",
+          name: "Continhas 3D",
+          icon: "🧊",
+          color: "var(--ouro)",
+          title: "Continhas com Material Dourado",
+          desc: "Cubinhos, barras e placas em 3D para armar contas.",
+          render: renderOuro,
+        },
+        tab: {
+          id: "tab",
+          name: "Tabuada",
+          icon: "📊",
+          color: "var(--tab)",
+          title: "Laboratório da Tabuada",
+          desc: "Grade mágica, pulos do sapo e treino.",
+          render: renderTab,
+        },
+        bal: {
+          id: "bal",
+          name: "Balões",
+          icon: "🎈",
+          color: "var(--bal)",
+          title: "Estoura-Balões",
+          desc: "Estoure o balão com a resposta certa.",
+          render: renderBal,
+        },
+        pausa: {
+          id: "pausa",
+          name: "Pausa",
+          icon: "🌙",
+          color: "var(--pausa)",
+          title: "Cantinho Calmo",
+          desc: "Respire fundo e descanse um pouquinho.",
+          render: renderPausa,
+        },
+      };
+      const stage = $("#stage");
+
+      // O roteador. Passos: (1) aumenta o SID e desliga animações antigas, (2) marca a
+      // aba ativa, (3) limpa a tela, (4) chama o render da atividade escolhida.
+      function go(id) {
+        SID++;
+        S.cur = id;
+        cancelLoops();
+        activeKeypad = null;
+        onResize = null;
+        try {
+          if ("speechSynthesis" in window) speechSynthesis.cancel();
+        } catch (e) {}
+        document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.id === id));
+        stage.style.animation = "none";
+        void stage.offsetWidth;
+        stage.style.animation = "";
+        stage.innerHTML = "";
+        MODS[id].render(stage);
+        window.scrollTo({ top: 0, behavior: S.calm ? "auto" : "smooth" });
+      }
+      const LEVELS = ["🌱 Fácil", "🌿 Médio", "🌳 Desafio"];
+
+      // Moldura comum a toda atividade: título, botões de nível (🌱🌿🌳), bolinhas de
+      // progresso e uma área "body" onde cada atividade desenha o seu conteúdo.
+      // Devolve { body, lvl } (um objeto): quem chama usa só o que precisa.
+      function shell(stage, m, opt = {}) {
+        stage.innerHTML = "";
+        const lvl = S.levels[m.id] || 1;
+        const wrap = el("div", "mission");
+        wrap.style.setProperty("--c", m.color);
+        const head = el("div", "mhead");
+        head.append(el("h2", "", `${m.icon} ${m.title}`));
+        if (!opt.noLevels) {
+          const lv = el("div", "levels");
+          LEVELS.forEach((L, i) => {
+            const b = el("button", "lvbtn" + (lvl === i + 1 ? " on" : ""), L);
+            b.onclick = () => {
+              S.levels[m.id] = i + 1;
+              R[m.id] = 0;
+              save();
+              SFX.click();
+              go(m.id);
+            };
+            lv.append(b);
+          });
+          head.append(lv);
+        }
+        if (!opt.noDots) {
+          const d = el("div", "dots");
+          d.id = "dots";
+          for (let i = 0; i < 5; i++) d.append(el("span", "dot"));
+          head.append(d);
+        }
+        const body = el("div", "mbody");
+        wrap.append(head, body);
+        stage.append(wrap);
+        renderDots(m.id);
+        if (introduced.has(m.id)) say(pick(AGAIN), "happy");
+        else {
+          introduced.add(m.id);
+          say(INTRO[m.id], "happy");
+        }
+        return { body, lvl };
+      }
+
+      function renderDots(id) {
+        const d = $("#dots");
+        if (!d) return;
+        [...d.children].forEach((s, i) => s.classList.toggle("full", i < (R[id] || 0)));
+      }
+
+      function updateStars() {
+        $("#starCount").textContent = S.stars;
+      }
+
+      /* ===================== Recompensas ===================== */
+      // Reforço positivo: acertar sempre gera estrela, som e confete. Nunca há perda de pontos.
+      // Chamada quando a criança acerta. Soma uma estrela, atualiza as bolinhas, toca os sons, comemora e, ao completar 5 missões, abre a janela de fim de rodada (com sugestão de pausa).
+      function win(id, msg) {
+        S.stars++;
+        R[id] = (R[id] || 0) + 1;
+        save();
+        updateStars();
+        renderDots(id);
+        SFX.good();
+        setTimeout(SFX.star, 380);
+        confetti(30);
+        const a = ACH.find((x) => x[0] === S.stars);
+        if (a) {
+          say(`Uau! ${S.stars} estrelas! Você ganhou: ${a[2]}!`, "cheer");
+          setTimeout(() => confetti(160), 400);
+        } else say(msg || pick(PRAISE), "cheer");
+        if (R[id] >= 5) {
+          R[id] = 0;
+          setTimeout(() => roundDone(id), 1100);
+        }
+      }
+
+      // Monta a janelinha de fim de rodada. Repare: o HTML vem de um template literal (texto entre crases `...`), e depois ligamos o onclick de cada botão.
+      function roundDone(id) {
+        markDone(id);
+        confetti(160);
+        SFX.star();
+        const d = $("#roundDlg");
+        d.innerHTML = `<h2>🏆 Rodada completa!</h2><p style="font-weight:700">Você fez 5 missões seguidas. Seu cérebro trabalhou bastante e merece descansar um pouquinho.</p><div class="dlgbtns"><button class="bigbtn" id="r1">🌙 Pausa de 1 minuto</button><button class="bigbtn alt" id="r2">▶ Mais uma rodada</button><button class="bigbtn ghost" id="r3">🏠 Voltar ao início</button></div>`;
+        $("#r1", d).onclick = () => {
+          d.close();
+          go("pausa");
+        };
+        $("#r2", d).onclick = () => {
+          d.close();
+          go(id);
+        };
+        $("#r3", d).onclick = () => {
+          d.close();
+          go("home");
+        };
+        if (!d.open) d.showModal();
+      }
+
+      /* ===================== Teclado numérico ===================== */
+      // Um COMPONENTE reutilizável: toda atividade que precisa de uma resposta numérica usa este mesmo teclado de tela (e também aceita o teclado do computador).
+      // Cria o teclado numérico. Devolve um objeto "api" com ações (press, clear, set,
+      // destroy). "val" é uma variável PRIVADA: só as funções criadas aqui dentro
+      // enxergam. Isso se chama closure (fechamento).
+      function keypad(parent, onSubmit) {
+        const box = el("div", "kp"),
+          disp = el("div", "kpdisp", "?"),
+          grid = el("div", "kpgrid");
+        let val = "";
+        const upd = () => {
+          disp.textContent = val || "?";
+        };
+        const api = {
+          el: box,
+          press(k) {
+            if (k === "⌫") val = val.slice(0, -1);
+            else if (k === "✔") {
+              if (val !== "") {
+                SFX.click();
+                onSubmit(parseInt(val, 10));
+              }
+              return;
+            } else if (val.length < 3) val += k;
+            SFX.click();
+            upd();
+          },
+          clear() {
+            val = "";
+            upd();
+          },
+          set(v) {
+            val = String(v);
+            upd();
+          },
+          destroy() {
+            if (activeKeypad === api) activeKeypad = null;
+            box.remove();
+          },
+        };
+        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "✔"].forEach((k) => {
+          const b = el("button", "kpkey" + (k === "✔" ? " ok" : ""), k);
+          b.onclick = () => api.press(k);
+          b.setAttribute("aria-label", k === "⌫" ? "apagar" : k === "✔" ? "confirmar" : k);
+          grid.append(b);
+        });
+        box.append(disp, grid);
+        parent.append(box);
+        activeKeypad = api;
+        return api;
+      }
+
+      // Escuta o teclado FÍSICO: números digitam, Backspace apaga, Enter confirma. Só reage se houver um teclado de tela ativo e nenhuma janela aberta.
+      document.addEventListener("keydown", (e) => {
+        if (
+          !activeKeypad ||
+          !document.body.contains(activeKeypad.el) ||
+          document.querySelector("dialog[open]")
+        )
+          return;
+        if (/^\d$/.test(e.key)) activeKeypad.press(e.key);
+        else if (e.key === "Backspace") activeKeypad.press("⌫");
+        else if (e.key === "Enter") activeKeypad.press("✔");
+      });
+
+      function nextBtn(mod, fn) {
+        const b = el("button", "bigbtn", "Próxima missão ➜");
+        b.onclick = () => {
+          SFX.click();
+          fn ? fn() : go(mod);
+        };
+        return b;
+      }
+      /* Pergunta numérica com dicas gentis: nunca pune, sempre ensina */
+      // Faz uma pergunta numérica com dicas gentis. "hints" é uma lista: cada erro usa a
+      // próxima dica (pode ser texto OU uma função, como uma animação). Quando acabam
+      // as dicas, mostramos a resposta e pedimos para a criança digitar: nunca punimos.
+      function askNumber(box, { mod, question, answer, hints = [], done, onRight }) {
+        box.innerHTML = "";
+        box.append(el("div", "question", question));
+        let tries = 0;
+        const kp = keypad(box, (v) => {
+          if (v === answer) {
+            kp.destroy();
+            box.innerHTML = "";
+            box.append(el("div", "question", "🎉 " + (done || "Resposta certa!")));
+            onRight && onRight(box);
+            if (mod) box.append(nextBtn(mod));
+          } else {
+            tries++;
+            SFX.oops();
+            kp.clear();
+            kp.el.classList.remove("shake");
+            void kp.el.offsetWidth;
+            kp.el.classList.add("shake");
+            const h = hints[tries - 1];
+            if (typeof h === "function") h();
+            else if (h) say(h, "think");
+            else {
+              say(`Tudo bem, errar faz parte! A resposta é ${answer}. Digite ${answer} e aperte ✔.`, "think");
+              kp.set(answer);
+            }
+          }
+        });
+        return kp;
+      }
+
+      /* ===================== Arrastar e soltar ===================== */
+      // POINTER EVENTS: uma API única para mouse, toque e caneta. Eventos usados:
+      // pointerdown (encostou), pointermove (arrastou), pointerup (soltou).
+      // Descobre qual "zona" de soltar (elemento com classe .zone) está sob o ponteiro. elementsFromPoint lista tudo que está naquele ponto, do topo para o fundo; ignoramos a própria peça.
+      function zoneAt(x, y, tok) {
+        for (const e of document.elementsFromPoint(x, y)) {
+          if (e === tok || tok.contains(e)) continue;
+          const z = e.closest && e.closest(".zone");
+          if (z) return z;
+        }
+        return null;
+      }
+
+      // Torna uma peça arrastável. Ideia central: ao arrastar NÃO mudamos a peça de
+      // lugar; apenas aplicamos transform: translate(dx, dy) para ela acompanhar o dedo.
+      // Ao soltar: se caiu numa zona válida, onDrop decide; se não, removemos o transform
+      // e a transição CSS faz a peça voltar sozinha. Se quase não se moveu, é um toque (onTap).
+      function makeDraggable(tok, { onDrop, onTap }) {
+        tok.addEventListener("pointerdown", (e) => {
+          if (tok.dataset.locked) return;
+          e.preventDefault();
+          try {
+            // "Captura" o ponteiro: mesmo que o dedo saia de cima da peça, ela continua recebendo os eventos até soltar.
+            tok.setPointerCapture(e.pointerId);
+          } catch (_) {}
+          const sx = e.clientX,
+            sy = e.clientY;
+          let moved = false,
+            hot = null;
+          tok.classList.add("drag");
+          SFX.pick();
+
+          // Roda a cada movimento: calcula quanto o dedo andou (dx, dy) e acompanha, com leve inclinação para parecer "pegar" a peça. Também acende a zona que está embaixo.
+          const move = (ev) => {
+            const dx = ev.clientX - sx,
+              dy = ev.clientY - sy;
+            if (Math.abs(dx) + Math.abs(dy) > 8) moved = true;
+            tok.style.transform = `translate(${dx}px,${dy}px) scale(1.15) rotate(${Math.max(-12, Math.min(12, dx / 20))}deg)`;
+            const z = zoneAt(ev.clientX, ev.clientY, tok);
+            if (z !== hot) {
+              hot && hot.classList.remove("hot");
+              hot = z;
+              hot && hot.classList.add("hot");
+            }
+          };
+
+          // Roda ao soltar: remove os "escutadores" temporários (removeEventListener) e decide entre toque, soltar numa zona ou voltar ao lugar.
+          const up = (ev) => {
+            tok.removeEventListener("pointermove", move);
+            tok.removeEventListener("pointerup", up);
+            tok.removeEventListener("pointercancel", up);
+            hot && hot.classList.remove("hot");
+            tok.classList.remove("drag");
+            if (!moved) {
+              tok.style.transform = "";
+              onTap && onTap(tok);
+              return;
+            }
+            const z = zoneAt(ev.clientX, ev.clientY, tok);
+            tok.style.transform = "";
+            if (!(z && onDrop && onDrop(tok, z) !== false)) {
+              /* volta suavemente */
+            }
+          };
+          tok.addEventListener("pointermove", move);
+          tok.addEventListener("pointerup", up);
+          tok.addEventListener("pointercancel", up);
+        });
+      }
+
+      // Fábrica de peças: "u" = unidade (emoji ou cubinho), "t" = barra de 10. dataset.v guarda o valor da peça dentro do próprio elemento HTML (atributo data-v).
+      function mkTok(kind, v, emoji, small) {
+        const t = el("div", "tok");
+        t.dataset.v = v;
+        t.dataset.k = kind;
+        if (kind === "t") {
+          t.classList.add("t");
+          t.innerHTML = "<i></i>".repeat(10);
+          t.setAttribute("aria-label", "dezena (10)");
+        } else if (emoji) {
+          t.classList.add("u", "emo");
+          if (small) t.classList.add("sm");
+          t.textContent = emoji;
+        } else t.classList.add("u", "cube");
+        return t;
+      }
+
+      // Texto do valor posicional: place(23) → "2 dezenas e 3 unidades". O .filter(Boolean) descarta textos vazios antes de juntar com " e ".
+      function place(v) {
+        const t = Math.floor(v / 10),
+          u = v % 10;
+        return (
+          [t ? `${t} dezena${t > 1 ? "s" : ""}` : "", u ? `${u} unidade${u > 1 ? "s" : ""}` : ""]
+            .filter(Boolean)
+            .join(" e ") || "0"
+        );
+      }
+
+      // Mostra uma multiplicação como arranjo: r linhas de c bolinhas. animationDelay escalonado faz as bolinhas surgirem uma depois da outra.
+      function arrayView(r, c) {
+        const w = el("div", "arrbox");
+        w.innerHTML = `<div class="arrcap">${r} linhas de ${c} = ${r} × ${c}</div>`;
+        const g = el("div", "arr");
+        g.style.gridTemplateColumns = `repeat(${c},22px)`;
+        for (let i = 0; i < r * c; i++) {
+          const d = el("i");
+          d.style.animationDelay = i * 25 + "ms";
+          g.append(d);
+        }
+        w.append(g);
+        return w;
+      }
+
+      /* ===================== ➕ SOMAR ===================== */
+      // PADRÃO DE TODAS AS ATIVIDADES (vale para Somar, Subtrair, Multiplicar, Dividir):
+      //   1. shell()      → cria a moldura e descobre o nível (lvl)
+      //   2. sorteio      → escolhe os números do problema conforme o nível
+      //   3. innerHTML    → monta a tela com um template literal
+      //   4. peças        → cria as peças e liga o arrastar (makeDraggable)
+      //   5. regras       → funções que reagem às ações e validam
+      //   6. askNumber    → pergunta a resposta; ao acertar chama win()
+      function renderSoma(stage) {
+        const m = MODS.soma,
+          { body, lvl } = shell(stage, m);
+        let a, b;
+
+        // NÍVEIS: cada nível é só um intervalo de números diferente. rnd(1, 8) sorteia de 1 a 8. Mudar a dificuldade do jogo = mudar estes números!
+        if (lvl === 1) {
+          a = rnd(1, 8);
+          b = rnd(1, Math.min(9, 10 - a));
+        } else if (lvl === 2) {
+          a = rnd(4, 14);
+          b = rnd(Math.max(3, 11 - a), 20 - a);
+        } else {
+          a = rnd(12, 48);
+          b = rnd(11, Math.min(49, 98 - a));
+        }
+        const blocks = lvl > 1,
+          emoji = pick(FOODS),
+          total = a + b;
+        let sum = 0;
+        body.innerHTML = `<div class="story">${blocks ? `Junte <b>${a}</b> com <b>${b}</b>` : `Tenho <b>${a}</b> ${emoji} e ganhei mais <b>${b}</b> ${emoji}`}</div>
+  <div class="eq"><span class="n">${a}</span><span class="op">+</span><span class="n">${b}</span><span class="op">=</span><span class="n r" id="eqr">?</span></div>
+  <div class="trays"><div class="tray A"><div class="tlabel">Grupo 1 · ${a}</div><div class="pile" id="pa"></div></div><div class="tray B"><div class="tlabel">Grupo 2 · ${b}</div><div class="pile" id="pb"></div></div></div>
+  <div class="zone basket" id="basket"><div class="tlabel">🧺 Arraste (ou toque) as peças para a cesta</div><div class="pile" id="inb"></div><div class="count" id="cnt">0</div></div>
+  <div class="ask" id="ask"></div>
+  <div class="tools"><button class="tool" id="hintB">💡 Dica</button><button class="tool" id="redo">🔄 Outro problema</button></div>`;
+        body.style.setProperty("--c", m.color);
+        const inb = $("#inb", body),
+          cnt = $("#cnt", body);
+
+        // Coloca uma peça na cesta: soma o valor (data-v) ao total, toca uma nota que sobe a cada peça e, quando o total fecha a conta, pergunta a resposta.
+        const put = (tok) => {
+          const v = +tok.dataset.v;
+          tok.dataset.locked = "1";
+          inb.append(tok);
+          sum += v;
+          SFX.count(inb.children.length - 1);
+          cnt.innerHTML = sum + (blocks ? `<small>${place(sum)}</small>` : "");
+          if (sum === total) askIt();
+          return true;
+        };
+
+        // Cria as peças de um número. Com blocos: 23 = 2 barras de 10 + 3 cubinhos (a ideia do material dourado!). Sem blocos: 23 emojis.
+        const mk = (n, pile) => {
+          const toks = [];
+          if (blocks) {
+            for (let i = 0; i < Math.floor(n / 10); i++) toks.push(mkTok("t", 10));
+            for (let i = 0; i < n % 10; i++) toks.push(mkTok("u", 1));
+          } else for (let i = 0; i < n; i++) toks.push(mkTok("u", 1, emoji));
+          toks.forEach((t) => {
+            makeDraggable(t, { onDrop: (tk, z) => (z.id === "basket" ? put(tk) : false), onTap: put });
+            pile.append(t);
+          });
+        };
+        mk(a, $("#pa", body));
+        mk(b, $("#pb", body));
+
+        // Hora de responder! askNumber mostra o teclado; as dicas vão ficando mais claras a cada erro.
+        function askIt() {
+          say(`Juntamos tudo na cesta! Quanto é ${a} + ${b}?`, "think");
+          askNumber($("#ask", body), {
+            mod: "soma",
+            question: `Quanto é ${a} + ${b}?`,
+            answer: total,
+            done: `${a} + ${b} = ${total}`,
+            hints: [
+              "Olhe o número grande da cesta 👀",
+              `Comece em ${a} e conte mais ${b}: ${a}, ${a + 1}, ${a + 2}...`,
+            ],
+            onRight: () => {
+              $("#eqr", body).textContent = total;
+              win("soma");
+            },
+          });
+        }
+        $("#hintB", body).onclick = () =>
+          say(
+            blocks
+              ? "Cada barra azul vale 10 e cada cubinho vale 1. Junte tudo na cesta!"
+              : "Leve o grupo 1 e depois o grupo 2 para a cesta. Depois é só olhar o número!",
+            "happy",
+          );
+        $("#redo", body).onclick = () => go("soma");
+      }
+
+      /* ===================== ➖ SUBTRAIR ===================== */
+      // Aqui entra o "empréstimo": se faltar cubinho, tocamos na barra azul e ela se quebra em 10 cubinhos. É a conta de "pedir emprestado" feita com as mãos.
+      function renderSub(stage) {
+        const m = MODS.sub,
+          { body, lvl } = shell(stage, m);
+        let a, b;
+        if (lvl === 1) {
+          a = rnd(4, 10);
+          b = rnd(1, a - 1);
+        } else if (lvl === 2) {
+          a = rnd(11, 20);
+          b = rnd(3, a - 2);
+        } else {
+          a = rnd(25, 99);
+          b = rnd(11, a - 5);
+        }
+        const blocks = lvl > 1,
+          emoji = pick(FOODS);
+        let eaten = 0;
+        body.innerHTML = `<div class="story">${blocks ? `Tire <b>${b}</b> de <b>${a}</b>` : `Tenho <b>${a}</b> ${emoji}. O Gulosinho vai comer <b>${b}</b>!`}</div>
+  <div class="eq"><span class="n">${a}</span><span class="op">−</span><span class="n">${b}</span><span class="op">=</span><span class="n r" id="eqr">?</span></div>
+  <div class="tray T"><div class="tlabel">🍽️ Mesa · tem <b id="left">${a}</b></div><div class="pile" id="tbl"></div></div>
+  <div class="zone monster" id="mon"><div class="face">👾</div><div class="tlabel" id="mlab">Gulosinho já comeu 0 de ${b}</div></div>
+  <div class="ask" id="ask"></div>
+  <div class="tools"><button class="tool" id="hintB">💡 Dica</button><button class="tool" id="redo">🔄 Outro problema</button></div>`;
+        body.style.setProperty("--c", m.color);
+        const mon = $("#mon", body),
+          tbl = $("#tbl", body);
+        const attach = (t) =>
+          makeDraggable(t, {
+            onDrop: (tk, z) => (z.id === "mon" ? eat(tk) : false),
+            onTap: (tk) => (tk.dataset.k === "t" ? breakTen(tk) : eat(tk)),
+          });
+
+        // replaceWith(...lista) troca UMA peça por VÁRIAS no mesmo lugar. O "..." (spread) espalha a lista como argumentos separados.
+        function breakTen(tok) {
+          SFX.pick();
+          const f = [];
+          for (let i = 0; i < 10; i++) {
+            const u = mkTok("u", 1);
+            attach(u);
+            f.push(u);
+          }
+          tok.replaceWith(...f);
+          say("Quebrei a dezena em 10 unidades! Agora dá para alimentar o Gulosinho.", "happy");
+        }
+
+        // Regras do Gulosinho: ele só come até a quantidade pedida, e uma barra inteira (10) só cabe se faltar 10 ou mais. Retornar false faz a peça voltar ao lugar.
+        function eat(tok) {
+          const v = +tok.dataset.v,
+            rem = b - eaten;
+          if (rem <= 0) {
+            say(`Já estou cheio! Só precisava comer ${b}.`, "think");
+            SFX.oops();
+            return false;
+          }
+          if (v > rem) {
+            say("Essa barra é grande demais! Toque nela para quebrar em 10 cubinhos 🔨", "think");
+            SFX.oops();
+            return false;
+          }
+          tok.remove();
+          eaten += v;
+          SFX.munch();
+          mon.classList.remove("munch");
+          void mon.offsetWidth;
+          mon.classList.add("munch");
+          $("#left", body).textContent = a - eaten;
+          $("#mlab", body).textContent = `Gulosinho já comeu ${eaten} de ${b}`;
+          if (eaten === b) finish();
+          return true;
+        }
+        const toks = [];
+        if (blocks) {
+          for (let i = 0; i < Math.floor(a / 10); i++) toks.push(mkTok("t", 10));
+          for (let i = 0; i < a % 10; i++) toks.push(mkTok("u", 1));
+        } else for (let i = 0; i < a; i++) toks.push(mkTok("u", 1, emoji));
+        toks.forEach((t) => {
+          attach(t);
+          tbl.append(t);
+        });
+        function finish() {
+          say(`Nhac! O Gulosinho comeu ${b}. Quanto sobrou na mesa?`, "think");
+          askNumber($("#ask", body), {
+            mod: "sub",
+            question: `Quanto é ${a} − ${b}?`,
+            answer: a - b,
+            done: `${a} − ${b} = ${a - b}`,
+            hints: [
+              "Olhe a mesa: quanto sobrou? 👀",
+              `Comece em ${a} e volte ${b}: ${a}, ${a - 1}, ${a - 2}...`,
+            ],
+            onRight: () => {
+              $("#eqr", body).textContent = a - b;
+              win("sub");
+            },
+          });
+        }
+        $("#hintB", body).onclick = () =>
+          say(
+            blocks
+              ? "Se faltar cubinho, toque na barra azul para quebrá-la em 10!"
+              : "Arraste as peças para o Gulosinho até ele comer a quantidade certa.",
+            "happy",
+          );
+        $("#redo", body).onclick = () => go("sub");
+      }
+
+      /* ===================== ✖️ MULTIPLICAR ===================== */
+      // Multiplicar = grupos iguais. A criança monta N bandejas com P itens e vê o arranjo em linhas e colunas.
+      function renderMult(stage) {
+        const m = MODS.mult,
+          { body, lvl } = shell(stage, m);
+        let N, P;
+        if (lvl === 1) {
+          N = rnd(2, 3);
+          P = rnd(2, 5);
+        } else if (lvl === 2) {
+          N = rnd(2, 5);
+          P = rnd(2, 5);
+        } else {
+          N = rnd(3, 6);
+          P = rnd(3, 7);
+        }
+        const emoji = pick(FOODS),
+          total = N * P;
+        let placed = 0;
+        body.innerHTML = `<div class="story"><b>${N}</b> bandejas com <b>${P}</b> ${emoji} em cada uma</div>
+  <div class="eq"><span class="n">${N}</span><span class="op">×</span><span class="n">${P}</span><span class="op">=</span><span class="n r" id="eqr">?</span></div>
+  <div class="plates" id="plates">${Array.from({ length: N }, (_, i) => `<div class="zone plate" data-i="${i}"><span class="badge">0/${P}</span><div class="pile"></div></div>`).join("")}</div>
+  <div class="tray T"><div class="tlabel">Pegue daqui e coloque ${P} em cada bandeja</div><div class="pile" id="src"></div></div>
+  <div class="ask" id="ask"></div>
+  <div class="tools"><button class="tool" id="hintB">💡 Dica</button><button class="tool" id="redo">🔄 Outro problema</button></div>`;
+        body.style.setProperty("--c", m.color);
+        const plates = [...body.querySelectorAll(".plate")],
+          cnt = (p) => p.querySelectorAll(".tok").length;
+        const toPlate = (tok, pl) => {
+          const c = cnt(pl);
+          if (c >= P) {
+            say(`Essa bandeja já tem ${P}! Tente outra.`, "think");
+            SFX.oops();
+            return false;
+          }
+          $(".pile", pl).append(tok);
+          tok.dataset.locked = "1";
+          SFX.count(c);
+          $(".badge", pl).textContent = `${c + 1}/${P}`;
+          if (c + 1 === P) pl.classList.add("full");
+          placed++;
+          if (placed === total) filled();
+          return true;
+        };
+        const tap = (tok) => {
+          const pl = plates.find((p) => cnt(p) < P);
+          if (pl) toPlate(tok, pl);
+        };
+        for (let i = 0; i < total; i++) {
+          const t = mkTok("u", 1, emoji, total > 24);
+          makeDraggable(t, {
+            onDrop: (tk, z) => (z.classList.contains("plate") ? toPlate(tk, z) : false),
+            onTap: tap,
+          });
+          $("#src", body).append(t);
+        }
+
+        // async/await: funções "async" podem usar "await" para ESPERAR (aqui, o tempo
+        // entre cada contagem 4, 8, 12...) sem travar a página. Depois de cada espera
+        // conferimos se o SID mudou (a criança pode ter trocado de aba) e, se sim, paramos.
+        async function skipCount() {
+          const sid = SID;
+          let acc = 0;
+          for (let i = 0; i < N; i++) {
+            acc += P;
+            plates[i].classList.remove("glow");
+            void plates[i].offsetWidth;
+            plates[i].classList.add("glow");
+            SFX.count(i * 2);
+            say(`${Array.from({ length: i + 1 }, (_, k) => (k + 1) * P).join(", ")}`, "happy");
+            await sleep(S.calm ? 800 : 950);
+            if (sid !== SID) return;
+          }
+          say(`${N} grupos de ${P}: ${Array(N).fill(P).join(" + ")} = ${acc}. Digite ${acc}!`, "think");
+        }
+        function filled() {
+          say(`As bandejas estão cheias! Quantos ${emoji} temos ao todo?`, "think");
+          askNumber($("#ask", body), {
+            mod: "mult",
+            question: `Quanto é ${N} × ${P}?`,
+            answer: total,
+            done: `${N} × ${P} = ${total}`,
+            hints: [() => skipCount(), `Some ${P} repetido ${N} vezes: ${Array(N).fill(P).join(" + ")}`],
+            onRight: (box) => {
+              $("#eqr", body).textContent = total;
+              box.append(arrayView(N, P));
+              win("mult");
+            },
+          });
+        }
+        $("#hintB", body).onclick = () =>
+          say(`Multiplicar é somar grupos iguais. Coloque ${P} em cada uma das ${N} bandejas!`, "happy");
+        $("#redo", body).onclick = () => go("mult");
+      }
+
+      /* ===================== ➗ DIVIDIR ===================== */
+      // Dividir = repartir igualmente. As peças podem ser movidas entre os amigos e de volta à bandeja; só conferimos tudo quando a criança aperta "Pronto!".
+      function renderDiv(stage) {
+        const m = MODS.div,
+          { body, lvl } = shell(stage, m);
+        let P,
+          Q,
+          rem = 0;
+        if (lvl === 1) {
+          P = rnd(2, 3);
+          Q = rnd(1, 4);
+        } else if (lvl === 2) {
+          P = rnd(2, 4);
+          Q = rnd(2, 5);
+        } else {
+          P = rnd(2, 4);
+          Q = rnd(2, 5);
+          rem = rnd(1, P - 1);
+        }
+        const T = P * Q + rem,
+          emoji = pick(FOODS),
+          fr = shuffle(FRIENDS).slice(0, P);
+        body.innerHTML = `<div class="story">Tenho <b>${T}</b> ${emoji} para dividir entre <b>${P}</b> amigos${rem ? "" : ". Todos devem ganhar igual!"}</div>
+  <div class="eq"><span class="n">${T}</span><span class="op">÷</span><span class="n">${P}</span><span class="op">=</span><span class="n r" id="eqr">?</span></div>
+  <div class="zone tray T" id="srcz"><div class="tlabel">🧺 Bandeja de ${emoji}</div><div class="pile" id="src"></div></div>
+  <div class="friends">${fr.map(([e, n], i) => `<div class="zone friend" data-i="${i}"><div class="fav">${e}</div><div class="fname">${n}: <b>0</b></div><div class="pile"></div></div>`).join("")}</div>
+  <div class="tools"><button class="tool" id="hintB">💡 Me ajuda</button><button class="bigbtn" id="doneB">Pronto! ✔</button></div>
+  <div class="ask" id="ask"></div>`;
+        body.style.setProperty("--c", m.color);
+        const src = $("#src", body),
+          fz = [...body.querySelectorAll(".friend")];
+        const counts = () => fz.map((z) => z.querySelectorAll(".tok").length);
+        const refresh = () => {
+          fz.forEach((z) => {
+            $("b", z).textContent = z.querySelectorAll(".tok").length;
+          });
+        };
+        const moveTo = (tok, z) => {
+          $(".pile", z).append(tok);
+          SFX.count(z.querySelectorAll(".tok").length - 1);
+          refresh();
+          return true;
+        };
+
+        // Quem tem menos peças? Math.min(...counts) acha o menor número; indexOf acha a posição dele. Usado no toque (dar ao amigo com menos) e na dica.
+        const minFriend = () => {
+          const cs = counts();
+          return fz[cs.indexOf(Math.min(...cs))];
+        };
+        const tap = (tok) => {
+          if (tok.parentNode === src) moveTo(tok, minFriend());
+          else {
+            src.append(tok);
+            SFX.pick();
+            refresh();
+          }
+        };
+        for (let i = 0; i < T; i++) {
+          const t = mkTok("u", 1, emoji, T > 20);
+          makeDraggable(t, {
+            onDrop: (tk, z) =>
+              z.id === "srcz" ? (src.append(tk), SFX.pick(), refresh(), true) : moveTo(tk, z),
+            onTap: tap,
+          });
+          src.append(t);
+        }
+        $("#hintB", body).onclick = () => {
+          if (src.children.length > rem) {
+            moveTo(src.firstChild, minFriend());
+            say("Dei um para quem tinha menos. Dividir é repartir um de cada vez!", "happy");
+          } else say("Agora veja se todo mundo tem a mesma quantidade.", "happy");
+        };
+        $("#doneB", body).onclick = () => {
+          const sid = SID;
+          const cs = counts(),
+            left = src.children.length,
+            mx = Math.max(...cs),
+            mn = Math.min(...cs);
+          if (mx !== mn) {
+            const iM = cs.indexOf(mx),
+              iN = cs.indexOf(mn);
+            say(`${fr[iM][1]} tem ${mx} e ${fr[iN][1]} tem ${mn}. Vamos deixar todo mundo igual?`, "think");
+            SFX.oops();
+            return;
+          }
+          if (left > rem) {
+            say(
+              `Todo mundo tem ${mx}, mas ainda sobraram ${left} na bandeja. Dá para repartir mais?`,
+              "think",
+            );
+            SFX.oops();
+            return;
+          }
+          body.querySelectorAll(".tok").forEach((t) => (t.dataset.locked = "1"));
+          $("#doneB", body).remove();
+          $("#hintB", body).remove();
+          say(`Repartimos igualzinho! Quantos ${emoji} cada amigo recebeu?`, "happy");
+          askNumber($("#ask", body), {
+            mod: null,
+            question: `Quantos ${emoji} cada amigo recebeu?`,
+            answer: Q,
+            done: `Cada amigo ficou com ${Q}!`,
+            hints: ["Olhe a casinha de um amigo: quantos tem lá? 👀", `Conte os ${emoji} de um amigo só.`],
+            onRight: () => {
+              $("#eqr", body).textContent = rem ? `${Q} (sobra ${rem})` : Q;
+              if (!rem) {
+                win("div");
+                $("#ask", body).append(nextBtn("div"));
+              } else
+                setTimeout(() => {
+                  if (sid !== SID) return;
+                  say(`E sobrou alguma coisa na bandeja? Quantos ${emoji}?`, "think");
+                  askNumber($("#ask", body), {
+                    mod: "div",
+                    question: `Quantos ${emoji} sobraram?`,
+                    answer: rem,
+                    done: `Sobraram ${rem}: não dá para repartir igualzinho!`,
+                    hints: ["Olhe a bandeja: o que ficou nela? 👀"],
+                    onRight: () => win("div"),
+                  });
+                }, 900);
+            },
+          });
+        };
+      }
+
+      /* ===================== 🧊 CONTINHAS COM MATERIAL DOURADO 3D ===================== */
+      // A parte mais avançada do arquivo. Aqui NÃO usamos biblioteca 3D: escrevemos um
+      // minúsculo motor 3D com Canvas 2D! A receita:
+      //   1. Cada peça é uma CAIXA (cubo, barra ou placa) com posição (x, y, z).
+      //   2. A "câmera" gira a cena (matemática de rotação) e achata 3D → 2D (projeção).
+      //   3. Desenhamos só as faces que olham para a câmera, do mais longe ao mais perto.
+      //   4. Para saber onde a criança tocou, testamos se o ponto está dentro de algum
+      //      polígono desenhado.
+      // Depois vêm as REGRAS da continha: juntar, trocar 10 por 1, pegar emprestado.
+      // Separa um número em dígitos: digitsOf(437) → [7, 3, 4] (unidade, dezena, centena). % dá o resto da divisão; Math.floor(n / 10) "anda" uma casa.
+      function digitsOf(n) {
+        return [n % 10, Math.floor(n / 10) % 10, Math.floor(n / 100) % 10];
+      }
+
+      // Gera uma continha adequada ao nível por TENTATIVA E ERRO (rejection sampling):
+      // sorteia dois números, confere as regras (precisa de vai-um? o empréstimo é possível?)
+      // e, se não servir, sorteia de novo. "continue" pula para a próxima tentativa.
+      function genOuro(lvl, op, nd) {
+        const lo = nd === 3 ? 100 : 10,
+          hi = nd === 3 ? 999 : 99;
+        for (let t = 0; t < 2000; t++) {
+          let a = rnd(lo, hi),
+            b = rnd(lo, hi);
+          if (op === "−") {
+            if (a === b) continue;
+            if (a < b) [a, b] = [b, a];
+          }
+          const A = digitsOf(a),
+            B = digitsOf(b);
+          let any = false;
+          if (op === "+") {
+            if (a + b > 999) continue;
+            let cr = 0;
+            for (let c = 0; c < 3; c++) {
+              const s = A[c] + B[c] + cr;
+              cr = s >= 10 ? 1 : 0;
+              if (s >= 10) any = true;
+            }
+          } else {
+            const cur = A.slice();
+            let ok = true;
+            for (let c = 0; c < 3; c++)
+              if (cur[c] < B[c]) {
+                if (c >= 2 || cur[c + 1] <= 0) {
+                  ok = false;
+                  break;
+                }
+                cur[c + 1]--;
+                cur[c] += 10;
+                any = true;
+              }
+            if (!ok) continue;
+          }
+          if ((lvl === 1) === any) continue;
+          return { a, b, A, B };
+        }
+        return op === "+"
+          ? { a: 23, b: 45, A: digitsOf(23), B: digitsOf(45) }
+          : { a: 68, b: 25, A: digitsOf(68), B: digitsOf(25) };
+      }
+
+      // Atenção ao estilo: todas as funções internas ficam DENTRO de renderOuro e
+      // compartilham suas variáveis (pieces, col, phase...). Cada vez que a criança abre
+      // a atividade, nasce um mundo novo e independente.
+      function renderOuro(stage) {
+        const m = MODS.ouro,
+          { body, lvl } = shell(stage, m);
+        body.style.setProperty("--c", m.color);
+        const sid = SID,
+          nd = lvl === 3 ? 3 : 2,
+          selOp = S.ouroOp || "mix",
+          op = selOp === "mix" ? pick(["+", "−"]) : selOp;
+        const Q = genOuro(lvl, op, nd);
+        const NAMES = ["unidades", "dezenas", "centenas"],
+          PN = ["cubinhos", "barras", "placas"],
+          PS = ["cubinho", "barra", "placa"];
+        const TYPE = ["u", "r", "p"],
+          ZX = [34, 0, -38],
+          WD = [12, 18, 32];
+        const SIZE = { u: [1, 1, 1], r: [1, 10, 1], p: [10, 1, 10] };
+        const HUE = { A: [245, 197, 24], B: [255, 140, 50], C: [80, 205, 125], T: [190, 203, 232] };
+
+        // As faces visíveis de uma caixa. Para cada uma:
+        //   n = "normal" (para onde a face aponta)   v = os 4 cantos (0 ou 1 em x, y, z)
+        //   k = brilho (a face de cima é mais clara; a de trás, mais escura = luz de cima)
+        //   d = quais eixos dividir em quadradinhos para desenhar a grade do material
+        const FACES = [
+          {
+            n: [0, 1, 0],
+            v: [
+              [0, 1, 0],
+              [1, 1, 0],
+              [1, 1, 1],
+              [0, 1, 1],
+            ],
+            k: 1.14,
+            d: [0, 2],
+          },
+          {
+            n: [0, 0, 1],
+            v: [
+              [0, 0, 1],
+              [1, 0, 1],
+              [1, 1, 1],
+              [0, 1, 1],
+            ],
+            k: 1,
+            d: [0, 1],
+          },
+          {
+            n: [1, 0, 0],
+            v: [
+              [1, 0, 1],
+              [1, 0, 0],
+              [1, 1, 0],
+              [1, 1, 1],
+            ],
+            k: 0.8,
+            d: [2, 1],
+          },
+          {
+            n: [-1, 0, 0],
+            v: [
+              [0, 0, 0],
+              [0, 0, 1],
+              [0, 1, 1],
+              [0, 1, 0],
+            ],
+            k: 0.9,
+            d: [2, 1],
+          },
+          {
+            n: [0, 0, -1],
+            v: [
+              [1, 0, 0],
+              [0, 0, 0],
+              [0, 1, 0],
+              [1, 1, 0],
+            ],
+            k: 0.72,
+            d: [0, 1],
+          },
+        ];
+        body.innerHTML = `<div class="chips" id="oops"></div>
+  <div class="ouroWrap">
+    <div class="contaBox"><div class="conta" id="conta"></div><div class="oinfo" id="oinfo"></div></div>
+    <div class="sceneBox"><canvas id="oc"></canvas><div class="tools"><button class="tool" id="oreset">↺ Visão inicial</button><span class="hintdrag">👆 Arraste o fundo para girar · 🟡 ouro · 🟠 outro número · 🟢 troca/emprestado</span></div></div>
+  </div>
+  <div class="tools" id="oact"></div><div class="ask" id="oask"></div>`;
+        [
+          ["+", "➕ Somar"],
+          ["−", "➖ Subtrair"],
+          ["mix", "🎲 Misturado"],
+        ].forEach(([v, l]) => {
+          const c = el("button", "chip" + (selOp === v ? " on" : ""), l);
+          c.onclick = () => {
+            S.ouroOp = v;
+            save();
+            SFX.click();
+            go("ouro");
+          };
+          $("#oops", body).append(c);
+        });
+
+        /* ---- estado da conta ---- */
+        // O ESTADO da conta: lista de peças, coluna atual (0 = unidades), fase (join, trade, remove...), resultado digitado e os vai-uns/empréstimos para mostrar na continha.
+        let pieces = [],
+          uid = 0,
+          col = 0,
+          phase = "",
+          removed = 0;
+        const res = [null, null, null],
+          adj = Q.A.slice(),
+          carry = [0, 0, 0, 0],
+          plus10 = [0, 0, 0];
+        const cntA = (c) => pieces.filter((p) => p.col === c && p.grp === "A" && p.state === "idle").length;
+        const inst = (t) => {
+          $("#oinfo", body).textContent = t;
+          say(t, "happy");
+        };
+        function setActions(list) {
+          const b = $("#oact", body);
+          b.innerHTML = "";
+          list.forEach(([l, f]) => {
+            const x = el("button", "bigbtn", l);
+            x.onclick = () => {
+              SFX.click();
+              f();
+            };
+            b.append(x);
+          });
+        }
+
+        /* ---- a continha em pé ---- */
+        const cols = [2, 1, 0];
+        {
+          let h = "<div></div>";
+          cols.forEach((c) => (h += `<div class="hd">${["U", "D", "C"][c]}</div>`));
+          h += "<div></div>";
+          cols.forEach((c) => (h += `<div class="cell cr" id="cr${c}"></div>`));
+          h += "<div></div>";
+          cols.forEach((c) => (h += `<div class="cell" id="ta${c}"></div>`));
+          h += `<div class="cell sgn">${op}</div>`;
+          cols.forEach((c) => (h += `<div class="cell" id="tb${c}"></div>`));
+          h += '<div class="line"></div><div></div>';
+          cols.forEach((c) => (h += `<div class="cell res" id="rs${c}"></div>`));
+          $("#conta", body).innerHTML = h;
+        }
+        function paintConta() {
+          cols.forEach((c) => {
+            const shown = c < nd,
+              ta = $("#ta" + c, body);
+            ta.innerHTML = shown ? (adj[c] !== Q.A[c] ? `<s>${Q.A[c]}</s>${adj[c]}` : `${Q.A[c]}`) : "";
+            $("#tb" + c, body).textContent = shown ? Q.B[c] : "";
+            $("#rs" + c, body).textContent = res[c] === null ? "" : res[c];
+            $("#cr" + c, body).textContent = op === "+" ? (carry[c] ? "+1" : "") : plus10[c] ? "+10" : "";
+            ["ta", "tb", "rs"].forEach((k) => $("#" + k + c, body).classList.toggle("act", c === col));
+          });
+        }
+
+        /* ---- câmera 3D e peças ---- */
+        const cv = $("#oc", body),
+          g = cv.getContext("2d");
+        let W = 640,
+          H = 420;
+
+        // A câmera: yaw (giro lateral), pitch (inclinação de cima), centro (cx) e escala (s = pixels por unidade). Os valores "t" (tcx, ts) são o destino; a câmera caminha suave até eles.
+        const cam = { yaw: -0.55, pitch: 0.62, cx: ZX[0], tcx: ZX[0], s: 30, ts: 30 };
+        function fit() {
+          W = Math.max(300, $(".sceneBox", body).clientWidth - 4);
+          H = Math.max(360, Math.min(480, Math.round(innerHeight * 0.5)));
+          const d = window.devicePixelRatio || 1;
+          cv.style.width = W + "px";
+          cv.style.height = H + "px";
+          cv.width = Math.round(W * d);
+          cv.height = Math.round(H * d);
+          g.setTransform(d, 0, 0, d, 0, 0);
+          fitScale();
+        }
+        function fitScale() {
+          const wd = [14, 20, 32][col] || 14,
+            hg = [14, 18, 18][col] || 14;
+          cam.ts = Math.min(W / wd, H / hg);
+        }
+
+        // PROJEÇÃO 3D → 2D. Passos: (1) move o mundo para o centro da câmera,
+        // (2) gira em torno do eixo vertical (yaw), (3) inclina (pitch), (4) joga fora a
+        // profundidade e multiplica pela escala para virar pixels. Devolve [x, y, profundidade];
+        // a profundidade serve para ordenar o desenho.
+        function pr(x, y, z) {
+          const cy = Math.cos(cam.yaw),
+            sy = Math.sin(cam.yaw),
+            cp = Math.cos(cam.pitch),
+            sp = Math.sin(cam.pitch);
+          x -= cam.cx;
+          y -= 4;
+          const x1 = x * cy + z * sy,
+            z1 = -x * sy + z * cy,
+            y2 = y * cp - z1 * sp,
+            z2 = y * sp + z1 * cp;
+          return [W / 2 + x1 * cam.s, H * 0.58 - y2 * cam.s, z2];
+        }
+
+        // Desenha uma caixa 3D. Para cada face: (1) CULLING: se a normal não aponta para a
+        // câmera, nem desenha (não dá para ver); (2) projeta os 4 cantos; (3) pinta com o brilho
+        // da face; (4) traça linhas para marcar os cubinhos (10 divisões numa barra, 10×10
+        // numa placa). Guarda os polígonos para o teste de toque.
+        function drawBox(x, y, z, w, h, d, dims, rgb, alpha, sel) {
+          const sy = Math.sin(cam.yaw),
+            cy = Math.cos(cam.yaw),
+            cp = Math.cos(cam.pitch),
+            sp = Math.sin(cam.pitch),
+            polys = [];
+          g.save();
+          g.globalAlpha = Math.max(0, alpha);
+          g.lineJoin = "round";
+          for (const f of FACES) {
+            const n1z = -f.n[0] * sy + f.n[2] * cy,
+              n2z = f.n[1] * sp + n1z * cp;
+            if (n2z <= 0.02) continue;
+            const P = f.v.map((v) => pr(x + v[0] * w, y + v[1] * h, z + v[2] * d));
+            let r = rgb[0] * f.k,
+              gg = rgb[1] * f.k,
+              b = rgb[2] * f.k;
+            if (sel) {
+              r = r * 0.6 + 255 * 0.4;
+              gg = gg * 0.6 + 255 * 0.4;
+              b = b * 0.6 + 255 * 0.4;
+            }
+            g.fillStyle = `rgb(${Math.min(255, r) | 0},${Math.min(255, gg) | 0},${Math.min(255, b) | 0})`;
+            g.beginPath();
+            P.forEach((q, i) => (i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])));
+            g.closePath();
+            g.fill();
+            g.strokeStyle = sel ? "#fff" : "rgba(110,70,0,.55)";
+            g.lineWidth = sel ? 3 : 1.2;
+            g.stroke();
+            const cu = dims[f.d[0]],
+              cvv = dims[f.d[1]];
+            g.strokeStyle = "rgba(110,70,0,.35)";
+            g.lineWidth = 1;
+            g.beginPath();
+            for (let i = 1; i < cu; i++) {
+              const t = i / cu;
+              g.moveTo(P[0][0] + (P[1][0] - P[0][0]) * t, P[0][1] + (P[1][1] - P[0][1]) * t);
+              g.lineTo(P[3][0] + (P[2][0] - P[3][0]) * t, P[3][1] + (P[2][1] - P[3][1]) * t);
+            }
+            for (let j = 1; j < cvv; j++) {
+              const t = j / cvv;
+              g.moveTo(P[0][0] + (P[3][0] - P[0][0]) * t, P[0][1] + (P[3][1] - P[0][1]) * t);
+              g.lineTo(P[1][0] + (P[2][0] - P[1][0]) * t, P[1][1] + (P[2][1] - P[1][1]) * t);
+            }
+            g.stroke();
+            polys.push(P.map((q) => [q[0], q[1]]));
+          }
+          g.restore();
+          return polys;
+        }
+
+        // Cria uma peça nova. "sc" (escala) começa perto de 0 quando é nova, para ela "crescer" ao aparecer.
+        function addPiece(c, grp, o = {}) {
+          const p = {
+            id: uid++,
+            type: TYPE[c],
+            col: c,
+            grp,
+            hue: o.hue || (grp === "B" ? "B" : "A"),
+            x: 0,
+            y: 0,
+            z: 0,
+            tx: 0,
+            ty: 0,
+            tz: 0,
+            sc: o.pop ? 0.05 : 1,
+            alpha: 1,
+            state: "idle",
+            sel: false,
+            polys: [],
+            z2: 0,
+            from: o.from || null,
+            init: false,
+          };
+          pieces.push(p);
+          return p;
+        }
+
+        // Onde cada peça deve ficar: cubinhos numa grade de 5 colunas, barras em fila, placas empilhadas. A peça NÃO teletransporta: ela desliza até esse alvo (ver o laço no final).
+        function setTarget(p, i) {
+          const X = ZX[p.col];
+          if (p.grp === "L") {
+            if (p.type === "r") {
+              p.tx = X - 5.5;
+              p.ty = 0;
+              p.tz = -3;
+            } else {
+              p.tx = X - 5;
+              p.ty = 12;
+              p.tz = -5;
+            }
+            return;
+          }
+          const B = p.grp === "B";
+          if (p.type === "u") {
+            p.tx = X - 2.8 + (i % 5) * 1.4;
+            p.ty = 0;
+            p.tz = (B ? -8 : 2) + Math.floor(i / 5) * 1.4;
+          } else if (p.type === "r") {
+            p.tx = X - 7.2 + (i % 10) * 1.5;
+            p.ty = 0;
+            p.tz = (B ? -8 : 3) + Math.floor(i / 10) * 1.6;
+          } else {
+            p.tx = B ? X + 3 : X - 13;
+            p.ty = i * 1.4;
+            p.tz = -5;
+          }
+        }
+
+        // Reorganiza as peças por coluna e grupo e calcula o alvo de cada uma. Chamada sempre que alguém é adicionado, removido ou muda de grupo.
+        function layout() {
+          const gr = {};
+          pieces.forEach((p) => {
+            if (p.state === "idle") (gr[p.col + p.grp] = gr[p.col + p.grp] || []).push(p);
+          });
+          Object.values(gr).forEach((l) => l.forEach((p, i) => setTarget(p, i)));
+          pieces.forEach((p) => {
+            if (!p.init) {
+              const f = p.from || [p.tx, p.ty, p.tz];
+              p.x = f[0];
+              p.y = f[1];
+              p.z = f[2];
+              p.init = true;
+            }
+          });
+        }
+
+        // Quais peças a criança pode tocar AGORA (depende da fase). Elas pulam de leve para chamar a atenção.
+        const tappable = (p) =>
+          p.state === "idle" &&
+          ((phase === "join" && p.grp === "B" && p.col === col) ||
+            (phase === "trade" && p.grp === "A" && p.col === col && p.type === TYPE[col]) ||
+            (phase === "remove" && p.grp === "A" && p.col === col) ||
+            (phase === "unpack" && p.grp === "L"));
+
+        // Desenha a cena: primeiro as bandejas, depois as peças ordenadas por profundidade
+        // (ALGORITMO DO PINTOR: pinta o mais longe primeiro, o mais perto cobre).
+        function draw(now) {
+          g.clearRect(0, 0, W, H);
+          [0, 1, 2].forEach((c) => {
+            drawBox(ZX[c] - WD[c] / 2, -0.8, -10, WD[c], 0.8, 20, [1, 1, 1], HUE.T, 1, false);
+          });
+          const lp = pr(ZX[col], 0, 11.5);
+          g.fillStyle = "#4a5a85";
+          g.font = '800 18px "Trebuchet MS",sans-serif';
+          g.textAlign = "center";
+          g.fillText(`Casa das ${NAMES[col]}`, lp[0], Math.min(H - 8, lp[1]));
+          pieces.forEach((p) => {
+            const s = SIZE[p.type];
+            p.z2 = pr(p.x + s[0] / 2, p.y + s[1] / 2, p.z + s[2] / 2)[2];
+          });
+          pieces
+            .slice()
+            .sort((a, b) => a.z2 - b.z2)
+            .forEach((p) => {
+              const s = SIZE[p.type],
+                sc = Math.max(0.05, p.sc);
+              let y = p.y + (p.sel ? 0.6 : 0);
+              if (tappable(p) && !S.calm) y += Math.abs(Math.sin(now / 260 + p.id)) * 0.3;
+              p.polys = drawBox(
+                p.x + (s[0] * (1 - sc)) / 2,
+                y,
+                p.z + (s[2] * (1 - sc)) / 2,
+                s[0] * sc,
+                s[1] * sc,
+                s[2] * sc,
+                s,
+                HUE[p.hue],
+                p.alpha,
+                p.sel,
+              );
+            });
+        }
+
+        // Ponto dentro do polígono? (algoritmo do raio): lança uma linha horizontal para a direita e conta quantas arestas ela cruza; número ímpar = dentro.
+        function pip(x, y, poly) {
+          let c = false;
+          for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            const a = poly[i],
+              b = poly[j];
+            if (a[1] > y !== b[1] > y && x < ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1]) + a[0]) c = !c;
+          }
+          return c;
+        }
+
+        // Qual peça está sob o toque? Testa da mais próxima para a mais distante e devolve a primeira que contém o ponto.
+        function hit(x, y) {
+          return pieces
+            .filter((p) => p.state === "idle")
+            .sort((a, b) => b.z2 - a.z2)
+            .find((p) => p.polys.some((q) => pip(x, y, q)));
+        }
+
+        // Um toque curto escolhe a peça; arrastar o fundo gira a câmera. Somamos o quanto o dedo andou (moved): menos de 8 pixels ainda conta como toque.
+        let drag = null;
+        cv.addEventListener("pointerdown", (e) => {
+          try {
+            cv.setPointerCapture(e.pointerId);
+          } catch (_) {}
+          const r = cv.getBoundingClientRect();
+          drag = { x: e.clientX, y: e.clientY, moved: 0, hx: e.clientX - r.left, hy: e.clientY - r.top };
+        });
+        cv.addEventListener("pointermove", (e) => {
+          if (!drag) return;
+          const dx = e.clientX - drag.x,
+            dy = e.clientY - drag.y;
+          drag.moved += Math.abs(dx) + Math.abs(dy);
+          drag.x = e.clientX;
+          drag.y = e.clientY;
+          if (drag.moved > 8) {
+            cam.yaw += dx * 0.008;
+            cam.pitch = Math.max(0.2, Math.min(1.3, cam.pitch - dy * 0.006));
+          }
+        });
+        const endDrag = () => {
+          if (!drag) return;
+          const d = drag;
+          drag = null;
+          if (d.moved <= 8) {
+            const p = hit(d.hx, d.hy);
+            if (p) tapPiece(p);
+          }
+        };
+        cv.addEventListener("pointerup", endDrag);
+        cv.addEventListener("pointercancel", () => {
+          drag = null;
+        });
+        $("#oreset", body).onclick = () => {
+          cam.yaw = -0.55;
+          cam.pitch = 0.62;
+          SFX.click();
+        };
+
+        /* ---- regras da continha ---- */
+        const ok = () => sid === SID;
+
+        // Despachante de toques: o que acontece depende da FASE atual (juntar, trocar, tirar, desmanchar).
+        function tapPiece(p) {
+          if (phase === "join" && p.grp === "B" && p.col === col) {
+            joinPiece(p);
+            if (!pieces.some((q) => q.col === col && q.grp === "B" && q.state === "idle")) checkAdd();
+          } else if (phase === "trade" && p.grp === "A" && p.col === col && p.type === TYPE[col]) {
+            p.sel = !p.sel;
+            SFX.pick();
+            const n = pieces.filter((q) => q.sel && q.state === "idle").length;
+            inst(`Selecionou ${n} de 10 ${PN[col]}.`);
+            if (n === 10) doTrade();
+          } else if (phase === "remove" && p.grp === "A" && p.col === col) removeP(p);
+          else if (phase === "unpack" && p.grp === "L") unpack(p);
+          else SFX.pick();
+        }
+        function joinPiece(p) {
+          p.grp = "A";
+          layout();
+          SFX.count(cntA(col) - 1);
+        }
+
+        // Máquina de estados da SOMA: ainda há peças laranja para juntar? → fase "join". Passou de 9? → "trade" (trocar 10 por 1). Senão → "type" (digitar o resultado da casa).
+        function checkAdd() {
+          if (!ok()) return;
+          const bs = pieces.filter((p) => p.col === col && p.grp === "B" && p.state === "idle");
+          if (bs.length) {
+            phase = "join";
+            inst(`Toque nas peças laranja para juntar com as douradas (casa das ${NAMES[col]}).`);
+            setActions([
+              [
+                "🧲 Juntar tudo",
+                () => {
+                  phase = "busy";
+                  setActions([]);
+                  bs.forEach((p, i) =>
+                    setTimeout(() => {
+                      if (!ok()) return;
+                      joinPiece(p);
+                      if (i === bs.length - 1) checkAdd();
+                    }, i * 130),
+                  );
+                },
+              ],
+            ]);
+            return;
+          }
+          const t = cntA(col);
+          if (t >= 10) {
+            phase = "trade";
+            inst(`Temos ${t} ${PN[col]}! Toque em 10 delas para trocar por 1 ${PS[col + 1]}.`);
+            setActions([["✨ Escolher 10 pra mim", autoSelect]]);
+            return;
+          }
+          phase = "type";
+          setActions([]);
+          askDigit(t);
+        }
+        function autoSelect() {
+          const free = pieces.filter((p) => p.col === col && p.grp === "A" && p.state === "idle" && !p.sel);
+          const have = pieces.filter((p) => p.sel && p.state === "idle").length;
+          free.slice(0, 10 - have).forEach((p) => (p.sel = true));
+          doTrade();
+        }
+
+        // A troca 10 → 1: as 10 peças viajam ao centro e somem; uma peça da casa seguinte aparece (verde) e vira o "vai-um". setTimeout espera a animação terminar.
+        function doTrade() {
+          phase = "busy";
+          setActions([]);
+          SFX.star();
+          const cx = ZX[col];
+          pieces
+            .filter((p) => p.sel && p.state === "idle")
+            .forEach((p) => {
+              p.sel = false;
+              p.state = "dying";
+              p.tx = cx;
+              p.ty = 4;
+              p.tz = 0;
+            });
+          say(`10 ${PN[col]} viram 1 ${PS[col + 1]}! Ela vai para a casa das ${NAMES[col + 1]}.`, "cheer");
+          setTimeout(() => {
+            if (!ok()) return;
+            addPiece(col + 1, "A", { hue: "C", pop: true, from: [cx, 3, 0] });
+            carry[col + 1] = 1;
+            layout();
+            paintConta();
+            checkAdd();
+          }, 700);
+        }
+
+        // Máquina de estados da SUBTRAÇÃO: faltam peças? → "borrow" (pegar emprestado). Já dá para tirar? → "remove". Tudo tirado? → "type".
+        function checkSub() {
+          if (!ok()) return;
+          const need = Q.B[col],
+            have = cntA(col);
+          if (have < need - removed) {
+            phase = "borrow";
+            inst(
+              `Precisamos tirar ${need}, mas só temos ${have} ${PN[col]}. Vamos pedir 1 ${PS[col + 1]} emprestada?`,
+            );
+            setActions([["🔨 Pegar emprestado", borrow]]);
+            return;
+          }
+          if (removed < need) {
+            phase = "remove";
+            inst(`Toque em ${need - removed} ${PN[col]} para tirar (${removed} de ${need}).`);
+            setActions([
+              [
+                "🖐️ Tirar pra mim",
+                () => {
+                  phase = "busy";
+                  setActions([]);
+                  const l = pieces
+                    .filter((p) => p.col === col && p.grp === "A" && p.state === "idle")
+                    .slice(0, need - removed);
+                  l.forEach((p, i) =>
+                    setTimeout(() => {
+                      if (!ok()) return;
+                      removeP(p, true);
+                      if (i === l.length - 1) checkSub();
+                    }, i * 160),
+                  );
+                },
+              ],
+            ]);
+            return;
+          }
+          phase = "type";
+          setActions([]);
+          askDigit(have);
+        }
+        function removeP(p, auto) {
+          if (removed >= Q.B[col]) return;
+          p.state = "dying";
+          p.ty = p.y + 5;
+          removed++;
+          layout();
+          SFX.pop();
+          if (!auto) {
+            if (removed === Q.B[col])
+              setTimeout(() => {
+                phase = "busy";
+                checkSub();
+              }, 350);
+            else inst(`Tirou ${removed} de ${Q.B[col]}.`);
+          }
+        }
+
+        // Empréstimo: uma peça da casa vizinha vem para esta casa (grupo "L" de loan) e a continha mostra o dígito riscado e o "+10".
+        function borrow() {
+          const d = pieces.filter((p) => p.col === col + 1 && p.grp === "A" && p.state === "idle").pop();
+          if (!d) return;
+          d.col = col;
+          d.grp = "L";
+          adj[col + 1]--;
+          adj[col] += 10;
+          plus10[col] = 1;
+          layout();
+          paintConta();
+          SFX.star();
+          phase = "unpack";
+          setActions([]);
+          inst(`Chegou 1 ${PS[col + 1]}! Toque nela para desmanchar em 10 ${PN[col]}.`);
+        }
+        function unpack(p) {
+          phase = "busy";
+          const f = [ZX[col] - 5, 4, -3];
+          p.state = "dying";
+          SFX.pop();
+          for (let i = 0; i < 10; i++) addPiece(col, "A", { hue: "C", pop: true, from: f });
+          layout();
+          setTimeout(checkSub, 600);
+        }
+
+        // Pede o dígito da casa atual. Ao acertar, preenche o resultado e oferece o botão "Próxima casa". O "more" decide se ainda há casas ou se a conta terminou.
+        function askDigit(ans) {
+          say(`Agora conte: quantas ${PN[col]} ficaram na casa das ${NAMES[col]}?`, "think");
+          askNumber($("#oask", body), {
+            mod: null,
+            question: `Quantos ${PN[col]} ficaram?`,
+            answer: ans,
+            done: `${ans} ${NAMES[col]}!`,
+            hints: ["Conte as peças tocando com o dedo na tela 👀", "Conte uma por uma, devagarinho!"],
+            onRight: (box) => {
+              res[col] = ans;
+              paintConta();
+              SFX.star();
+              const more = op === "+" ? col + 1 < nd || carry[col + 1] : col + 1 < nd;
+              if (more) {
+                const b = nextBtn(null, () => {
+                  col++;
+                  enterCol();
+                });
+                b.textContent = "Próxima casa ➜";
+                box.append(b);
+              } else finish(box);
+            },
+          });
+        }
+
+        // Entra numa casa nova: leva a câmera até ela, ajusta o zoom e começa a fase certa conforme seja soma ou subtração.
+        function enterCol() {
+          removed = 0;
+          $("#oask", body).innerHTML = "";
+          cam.tcx = ZX[col];
+          fitScale();
+          paintConta();
+          if (op === "+") checkAdd();
+          else checkSub();
+        }
+        function finish(box) {
+          const r = op === "+" ? Q.a + Q.b : Q.a - Q.b;
+          $("#oinfo", body).innerHTML = `🎉 ${Q.a} ${op} ${Q.b} = <b>${r}</b>`;
+          win("ouro", `Conta pronta! ${Q.a} ${op} ${Q.b} = ${r}`);
+          box.append(nextBtn("ouro"));
+          setActions([]);
+        }
+
+        /* ---- começo ---- */
+        for (let c = 0; c < 3; c++) {
+          for (let i = 0; i < Q.A[c]; i++) addPiece(c, "A");
+          if (op === "+") for (let i = 0; i < Q.B[c]; i++) addPiece(c, "B");
+        }
+        fit();
+        onResize = fit;
+        cam.cx = cam.tcx;
+        cam.s = cam.ts;
+        layout();
+        pieces.forEach((p) => {
+          p.x = p.tx;
+          p.y = p.ty;
+          p.z = p.tz;
+          p.sc = 1;
+        });
+        paintConta();
+        loop((dt, now) => {
+          // SUAVIZAÇÃO (easing): a cada quadro, cada valor anda uma FRAÇÃO k da distância que
+          // falta até o alvo. Rápido no começo, devagar no fim, e independente de dt (mesma
+          // sensação em qualquer computador). Usada na câmera e em todas as peças.
+          const k = 1 - Math.exp(-dt * 9);
+          cam.cx += (cam.tcx - cam.cx) * k;
+          cam.s += (cam.ts - cam.s) * k;
+          pieces.forEach((p) => {
+            p.x += (p.tx - p.x) * k;
+            p.y += (p.ty - p.y) * k;
+            p.z += (p.tz - p.z) * k;
+            if (p.state === "dying") {
+              p.alpha -= dt * 2.2;
+              p.sc = Math.max(0.2, p.sc - dt * 0.8);
+            } else p.sc += (1 - p.sc) * Math.min(1, dt * 8);
+          });
+          pieces = pieces.filter((p) => p.alpha > 0);
+          draw(now);
+        });
+        enterCol();
+      }
+
+      /* ===================== 📊 TABUADA ===================== */
+      // Três jeitos de enxergar a tabuada: GRADE (área do retângulo), PULOS (contagem de n em n) e TREINO (praticar).
+      // A aba Tabuada tem 3 sub-telas. Em vez de trocar de aba, trocamos só o conteúdo da área "tbody" (função show) e lembramos a escolha em S.tabSub.
+      function renderTab(stage) {
+        const m = MODS.tab,
+          { body } = shell(stage, m, { noLevels: true });
+        body.style.setProperty("--c", m.color);
+        body.innerHTML = `<div class="chips" id="sub"></div><div id="tbody"></div>`;
+        const subs = [
+          ["grade", "🔲 Grade mágica"],
+          ["sapo", "🐸 Pulos do sapo"],
+          ["treino", "🎯 Treinar"],
+        ];
+        const chips = $("#sub", body),
+          host = $("#tbody", body);
+        const show = (id) => {
+          S.tabSub = id;
+          save();
+          cancelLoops();
+          onResize = null;
+          activeKeypad = null;
+          [...chips.children].forEach((c) => c.classList.toggle("on", c.dataset.id === id));
+          host.innerHTML = "";
+          ({ grade: gridView, sapo: frogView, treino: trainView })[id](host);
+        };
+        subs.forEach(([id, label]) => {
+          const c = el("button", "chip", label);
+          c.dataset.id = id;
+          c.onclick = () => {
+            SFX.click();
+            show(id);
+          };
+          chips.append(c);
+        });
+        show(S.tabSub || "grade");
+      }
+
+      // Grade mágica 10×10 em Canvas: cada quadradinho é desenhado com cor por linha
+      // (hsl: matiz, saturação, luminosidade). Ao tocar, pintamos o retângulo de 1×1 até
+      // linhas × colunas e mostramos a conta: multiplicar é calcular uma ÁREA!
+      function gridView(host) {
+        host.style.setProperty("--c", "var(--tab)");
+        say("Toque em um quadradinho! O retângulo colorido mostra linhas × colunas.", "happy");
+        host.innerHTML = `<div class="gridwrap"><canvas id="gc"></canvas><div><div class="bigeq" id="geq">Toque na grade! 👆</div><div class="exp" id="gexp">Cada quadradinho mostra quanto é <b>linhas × colunas</b>. Experimente vários!</div></div></div>`;
+        const cv = $("#gc", host),
+          g = cv.getContext("2d");
+        let sel = [3, 4],
+          sz = 300;
+        function fit() {
+          sz = Math.max(280, Math.min(540, host.clientWidth - 10));
+          const d = window.devicePixelRatio || 1;
+          cv.style.width = cv.style.height = sz + "px";
+          cv.width = cv.height = Math.round(sz * d);
+          g.setTransform(d, 0, 0, d, 0, 0);
+          draw();
+        }
+        function draw() {
+          const cs = sz / 11;
+          g.clearRect(0, 0, sz, sz);
+          g.textAlign = "center";
+          g.textBaseline = "middle";
+          g.fillStyle = "#8a94b3";
+          g.font = `800 ${cs * 0.45}px "Trebuchet MS",sans-serif`;
+          for (let i = 1; i <= 10; i++) {
+            g.fillText(i, i * cs + cs / 2, cs / 2);
+            g.fillText(i, cs / 2, i * cs + cs / 2);
+          }
+          for (let r = 1; r <= 10; r++)
+            for (let k = 1; k <= 10; k++) {
+              const inside = r <= sel[0] && k <= sel[1],
+                corner = r === sel[0] && k === sel[1];
+              g.fillStyle = inside ? `hsl(${(r * 36) % 360},85%,${corner ? 52 : 74}%)` : "#f1f4fc";
+              rr(g, k * cs + 2, r * cs + 2, cs - 4, cs - 4, 8);
+              g.fill();
+              g.fillStyle = inside ? "#27324a" : "#b5bed8";
+              g.font = `${inside ? 900 : 700} ${cs * 0.34}px "Trebuchet MS",sans-serif`;
+              g.fillText(r * k, k * cs + cs / 2, r * cs + cs / 2);
+            }
+        }
+        function info() {
+          const [r, k] = sel;
+          $("#geq", host).textContent = `${r} × ${k} = ${r * k}`;
+          $("#gexp", host).innerHTML =
+            `${r} grupos de ${k}:<br><b>${Array(r).fill(k).join(" + ")} = ${r * k}</b><br>🔄 Trocando a ordem, ${k} × ${r} também dá ${r * k}!`;
+        }
+
+        // Converte a posição do clique (em pixels da janela) para linha e coluna da grade: subtrai o canto do canvas e divide pelo tamanho de cada célula.
+        function hit(e, sound) {
+          const rect = cv.getBoundingClientRect(),
+            cs = sz / 11;
+          const col = Math.floor((e.clientX - rect.left) / cs),
+            row = Math.floor((e.clientY - rect.top) / cs);
+          if (row < 1 || row > 10 || col < 1 || col > 10) return;
+          if (row !== sel[0] || col !== sel[1] || sound) {
+            sel = [row, col];
+            draw();
+            info();
+            if (sound) {
+              SFX.count((row * col) % 12);
+              if (S.voice) speak(`${row} vezes ${col} é ${row * col}`);
+            }
+          }
+        }
+        cv.addEventListener("pointerdown", (e) => {
+          cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
+          hit(e, true);
+        });
+        cv.addEventListener("pointermove", (e) => {
+          if (e.buttons || e.pointerType === "mouse") hit(e, false);
+        });
+        onResize = fit;
+        fit();
+        info();
+      }
+
+      // O sapo salta de n em n sobre a reta numérica: a tabuada do n é a lista dos pontos onde ele pousa.
+      function frogView(host) {
+        host.style.setProperty("--c", "var(--tab)");
+        let n = S.frogN || 2,
+          hop = 0,
+          t = 0,
+          playing = false;
+        host.innerHTML = `<div class="chips" id="nch"></div><div style="text-align:center"><canvas id="fc"></canvas></div><div class="exp" id="fexp" style="text-align:center;margin:8px auto"></div><div class="tools"><button class="bigbtn" id="jump">▶ Pular!</button></div>`;
+        const cv = $("#fc", host),
+          g = cv.getContext("2d");
+        let W = 600,
+          H = 250;
+        function fit() {
+          W = Math.max(300, Math.min(900, host.clientWidth - 10));
+          const d = window.devicePixelRatio || 1;
+          cv.style.width = W + "px";
+          cv.style.height = H + "px";
+          cv.width = Math.round(W * d);
+          cv.height = Math.round(H * d);
+          g.setTransform(d, 0, 0, d, 0, 0);
+        }
+        const X = (k) => 50 + (k * (W - 100)) / 10,
+          BY = 190;
+        const chipsEl = $("#nch", host);
+        for (let i = 1; i <= 10; i++) {
+          const c = el("button", "chip" + (i === n ? " on" : ""), String(i));
+          c.onclick = () => {
+            n = i;
+            S.frogN = i;
+            save();
+            hop = 0;
+            t = 0;
+            playing = false;
+            [...chipsEl.children].forEach((x, j) => x.classList.toggle("on", j === i - 1));
+            SFX.click();
+            text();
+          };
+          chipsEl.append(c);
+        }
+        const text = () => {
+          const l = [];
+          for (let k = 0; k <= hop; k++) l.push(n * k);
+          $("#fexp", host).innerHTML =
+            `Pulando de <b>${n}</b> em <b>${n}</b>: <b>${l.join(", ")}</b>` +
+            (hop > 0 ? `<br>${hop} × ${n} = <b>${hop * n}</b>` : "");
+        };
+        $("#jump", host).onclick = () => {
+          if (hop >= 10) {
+            hop = 0;
+            t = 0;
+          }
+          playing = true;
+          SFX.click();
+          say(`O sapo vai pular de ${n} em ${n}!`, "happy");
+          text();
+        };
+        fit();
+        onResize = fit;
+        text();
+        loop((dt) => {
+          if (playing) {
+            t += dt / (S.calm ? 0.9 : 0.65);
+            if (t >= 1) {
+              t = 0;
+              hop++;
+              SFX.count(hop - 1);
+              text();
+              if (hop >= 10) {
+                playing = false;
+                say(`10 pulos de ${n} chegam em ${n * 10}!`, "cheer");
+              }
+            }
+          }
+          g.clearRect(0, 0, W, H);
+          g.strokeStyle = "#27324a";
+          g.lineWidth = 4;
+          g.lineCap = "round";
+          g.beginPath();
+          g.moveTo(X(0) - 20, BY);
+          g.lineTo(X(10) + 20, BY);
+          g.stroke();
+          for (let i = 0; i < hop; i++) {
+            g.strokeStyle = `hsl(${i * 36},80%,60%)`;
+            g.lineWidth = 5;
+            g.beginPath();
+            g.moveTo(X(i), BY);
+            g.quadraticCurveTo((X(i) + X(i + 1)) / 2, BY - 130, X(i + 1), BY);
+            g.stroke();
+          }
+          g.textAlign = "center";
+          for (let k = 0; k <= 10; k++) {
+            const done = k <= hop;
+            g.fillStyle = done ? "#ff8a5b" : "#cfd6ea";
+            g.beginPath();
+            g.arc(X(k), BY, done ? 9 : 7, 0, 7);
+            g.fill();
+            g.fillStyle = done ? "#27324a" : "#9aa3bf";
+            g.font = `900 ${W < 500 ? 14 : 20}px "Trebuchet MS",sans-serif`;
+            g.textBaseline = "top";
+            g.fillText(n * k, X(k), BY + 16);
+          }
+          let fx0 = X(hop),
+            fy = BY - 8;
+
+          // O pulo é uma PARÁBOLA: avançamos x em linha reta e subimos/descemos com 4·t·(1−t), que vale 0 no início e no fim e é máxima (1) no meio.
+          if (playing && hop < 10) {
+            fx0 = X(hop) + (X(hop + 1) - X(hop)) * t;
+            fy = BY - 8 - 65 * 4 * t * (1 - t);
+          }
+          g.font = "46px sans-serif";
+          g.textBaseline = "bottom";
+          g.fillText("🐸", fx0, fy);
+        });
+      }
+
+      // Treino em múltipla escolha. A operação inversa (÷) usa a mesma base: se 4 × 3 = 12 então 12 ÷ 4 = 3.
+      function trainView(host) {
+        host.style.setProperty("--c", "var(--tab)");
+        let tb = S.trainT || 0,
+          inv = !!S.trainInv;
+        host.innerHTML = `<div class="chips" id="tch"></div><div class="chips" id="tmode"></div><div id="qbox" style="text-align:center"></div>`;
+        const tch = $("#tch", host),
+          tmode = $("#tmode", host),
+          qbox = $("#qbox", host);
+        const paint = () => {
+          tch.innerHTML = "";
+          [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].forEach((v) => {
+            const c = el("button", "chip" + (tb === v ? " on" : ""), v ? `${v}` : "🎲 Todas");
+            c.onclick = () => {
+              tb = v;
+              S.trainT = v;
+              save();
+              SFX.click();
+              paint();
+              newQ();
+            };
+            tch.append(c);
+          });
+          tmode.innerHTML = "";
+          [
+            [false, "✖️ Tabuada"],
+            [true, "➗ Operação inversa"],
+          ].forEach(([v, l]) => {
+            const c = el("button", "chip" + (inv === v ? " on" : ""), l);
+            c.onclick = () => {
+              inv = v;
+              S.trainInv = v;
+              save();
+              SFX.click();
+              paint();
+              newQ();
+            };
+            tmode.append(c);
+          });
+        };
+
+        // Sorteia a pergunta e as alternativas erradas "plausíveis" (perto da certa: ±1, ±2, ±t...). Um Set (conjunto) impede alternativas repetidas.
+        function newQ() {
+          const t = tb || rnd(1, 10),
+            k = rnd(1, 10),
+            P = t * k,
+            ans = inv ? k : P;
+          const set = new Set([ans]);
+          const offs = inv ? [1, -1, 2, -2, 3] : [t, -t, 1, -1, 2, -2, k];
+          let guard = 0;
+          while (set.size < 4 && guard++ < 80) {
+            const v = ans + pick(offs);
+            if (v >= 0) set.add(v);
+          }
+          while (set.size < 4) set.add(ans + set.size + 7);
+          qbox.innerHTML = "";
+          qbox.append(el("div", "story", `${inv ? `${P} ÷ ${t}` : `${t} × ${k}`} = <b>?</b>`));
+          const ch = el("div", "choices");
+          qbox.append(ch);
+          const vis = el("div");
+          qbox.append(vis);
+          let wrong = 0;
+          shuffle([...set]).forEach((v) => {
+            const b = el("button", "choice", String(v));
+            b.onclick = () => {
+              if (v === ans) {
+                b.classList.add("right");
+                ch.querySelectorAll(".choice").forEach((x) => {
+                  if (x !== b) x.classList.add("dim");
+                });
+                vis.innerHTML = "";
+                vis.append(arrayView(t, k));
+                win(
+                  "tab",
+                  inv
+                    ? `Certo! ${P} ÷ ${t} = ${k}, porque ${t} × ${k} = ${P}.`
+                    : `Certo! ${t} × ${k} = ${P}.`,
+                );
+                const nb = nextBtn(null, newQ);
+                qbox.append(nb);
+              } else {
+                wrong++;
+                b.classList.add("dim");
+                SFX.oops();
+                say(
+                  inv
+                    ? `Quase! Pense: ${t} × ? = ${P}. Quantos grupos de ${t} cabem em ${P}?`
+                    : `Quase! Pense em ${t} grupos de ${k}, ou ${k} grupos de ${t}.`,
+                  "think",
+                );
+                if (wrong >= 1 && !vis.firstChild) vis.append(arrayView(t, k));
+              }
+            };
+            ch.append(b);
+          });
+        }
+        paint();
+        newQ();
+      }
+
+      /* ===================== 🎈 BALÕES ===================== */
+      // Um MINI JOGO em Canvas: um laço de animação sobe os balões, e um evento de ponteiro estoura. Erros não tiram pontos: o balão errado só some, e a dica acende o certo.
+      function renderBal(stage) {
+        const m = MODS.bal,
+          { body } = shell(stage, m, { noLevels: true });
+        body.style.setProperty("--c", m.color);
+        let ops = new Set(S.balOps && S.balOps.length ? S.balOps : ["+"]),
+          slow = S.balSlow !== false;
+        body.innerHTML = `<div class="chips" id="bops"></div><div class="chips" id="bspd"></div><div class="story" id="bq"></div><canvas id="bc"></canvas>`;
+        const cv = $("#bc", body),
+          g = cv.getContext("2d");
+        let W = 600,
+          H = 420,
+          bl = [],
+          ps = [],
+          q = null,
+          lock = false;
+        function fit() {
+          W = Math.max(300, Math.min(1000, body.clientWidth - 8));
+          H = Math.max(360, Math.min(520, Math.round(innerHeight * 0.55)));
+          const d = window.devicePixelRatio || 1;
+          cv.style.width = W + "px";
+          cv.style.height = H + "px";
+          cv.width = Math.round(W * d);
+          cv.height = Math.round(H * d);
+          g.setTransform(d, 0, 0, d, 0, 0);
+        }
+        const paint = () => {
+          const co = $("#bops", body);
+          co.innerHTML = "";
+          ["+", "−", "×", "÷"].forEach((o) => {
+            const c = el("button", "chip" + (ops.has(o) ? " on" : ""), o);
+            c.style.fontSize = "1.4rem";
+            c.onclick = () => {
+              if (ops.has(o) && ops.size > 1) ops.delete(o);
+              else ops.add(o);
+              S.balOps = [...ops];
+              save();
+              SFX.click();
+              paint();
+              newQ();
+            };
+            co.append(c);
+          });
+          const cs = $("#bspd", body);
+          cs.innerHTML = "";
+          [
+            [true, "🐢 Calmo"],
+            [false, "🐇 Normal"],
+          ].forEach(([v, l]) => {
+            const c = el("button", "chip" + (slow === v ? " on" : ""), l);
+            c.onclick = () => {
+              slow = v;
+              S.balSlow = v;
+              save();
+              SFX.click();
+              paint();
+            };
+            cs.append(c);
+          });
+        };
+
+        // Cria uma nova rodada: pergunta, 4 respostas e 4 balões em raias (lanes) diferentes, começando abaixo da tela e subindo com velocidades levemente diferentes.
+        function newQ() {
+          const op = pick([...ops]);
+          let a, b, ans;
+          if (op === "+") {
+            a = rnd(1, 15);
+            b = rnd(1, 15);
+            ans = a + b;
+          } else if (op === "−") {
+            a = rnd(4, 20);
+            b = rnd(1, a - 1);
+            ans = a - b;
+          } else if (op === "×") {
+            a = rnd(1, 10);
+            b = rnd(1, 10);
+            ans = a * b;
+          } else {
+            b = rnd(1, 10);
+            ans = rnd(1, 10);
+            a = b * ans;
+          }
+          const set = new Set([ans]),
+            offs = [1, -1, 2, -2, 3, -3, 10, -10, 5];
+          let guard = 0;
+          while (set.size < 4 && guard++ < 80) {
+            const v = ans + pick(offs);
+            if (v >= 0) set.add(v);
+          }
+          while (set.size < 4) set.add(ans + set.size + 11);
+          const vals = shuffle([...set]),
+            lanes = shuffle([0, 1, 2, 3]),
+            r = Math.min(52, W / 9);
+          bl = vals.map((v, i) => ({
+            t: v,
+            right: v === ans,
+            x: (W * (lanes[i] + 0.5)) / 4,
+            dx: 0,
+            y: H + r + i * 55 + rnd(0, 40),
+            r,
+            c: COLORS[(i + rnd(0, 6)) % COLORS.length],
+            ph: Math.random() * 6,
+            v: 1 + Math.random() * 0.25,
+            alpha: 1,
+            state: "in",
+            hint: false,
+          }));
+          q = { ans, wrong: 0 };
+          lock = false;
+          $("#bq", body).innerHTML = `Quanto é <b>${a} ${op} ${b}</b>?`;
+        }
+
+        // Efeito de estouro: 26 partículas lançadas para os lados e para cima (vy negativo = para cima no canvas, onde y cresce para BAIXO).
+        function burst(x, y, c) {
+          for (let i = 0; i < 26; i++)
+            ps.push({
+              x,
+              y,
+              vx: (Math.random() - 0.5) * 340,
+              vy: (Math.random() - 0.9) * 300,
+              life: 0.8,
+              c: Math.random() < 0.5 ? c : pick(COLORS),
+            });
+        }
+
+        // Regras do toque: balão certo estoura e dá estrela; errado desaparece e, no 2º erro, o certo passa a brilhar (aprendizado sem erro).
+        function hitB(b) {
+          if (b.right) {
+            b.state = "pop";
+            lock = true;
+            burst(b.dx, b.y, b.c);
+            SFX.pop();
+            win("bal");
+            setTimeout(newQ, 1000);
+          } else {
+            b.state = "wrong";
+            SFX.oops();
+            q.wrong++;
+            say(
+              q.wrong >= 2
+                ? "Quase! Olhe o balão que está brilhando ✨"
+                : pick(["Esse não, mas tudo bem! Tente outro.", "Hmm, confira de novo com calma."]),
+              "think",
+            );
+            if (q.wrong >= 2) {
+              const r = bl.find((x) => x.right);
+              if (r) r.hint = true;
+            }
+          }
+        }
+        cv.addEventListener("pointerdown", (e) => {
+          if (lock) return;
+          const rect = cv.getBoundingClientRect(),
+            mx = e.clientX - rect.left,
+            my = e.clientY - rect.top;
+          for (let i = bl.length - 1; i >= 0; i--) {
+            const b = bl[i];
+            if (b.state !== "in") continue;
+            const dx = (mx - b.dx) / b.r,
+              dy = (my - b.y) / (b.r * 1.2);
+            if (dx * dx + dy * dy <= 1.15) {
+              hitB(b);
+              break;
+            }
+          }
+        });
+        fit();
+        onResize = () => {
+          fit();
+        };
+        paint();
+        newQ();
+        loop((dt, now) => {
+          g.clearRect(0, 0, W, H);
+          const sp = slow ? 28 : 52;
+          for (const b of bl) {
+            if (b.state === "pop" || b.state === "gone") continue;
+            b.y -= sp * dt * b.v;
+            b.dx = b.x + Math.sin(now / 700 + b.ph) * 12;
+            if (b.state === "wrong") {
+              b.alpha -= dt * 1.4;
+              if (b.alpha <= 0) b.state = "gone";
+            }
+            drawBalloon(g, b);
+          }
+          const cr = bl.find((x) => x.right);
+          if (cr && cr.state === "in" && cr.y < -cr.r * 2 && !lock) {
+            say("Sem pressa! Vamos de novo, o tempo é seu.", "happy");
+            newQ();
+          }
+          ps.forEach((p) => {
+            p.vy += 500 * dt;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.life -= dt;
+          });
+          ps = ps.filter((p) => p.life > 0);
+          ps.forEach((p) => {
+            g.globalAlpha = Math.max(0, p.life / 0.8);
+            g.fillStyle = p.c;
+            g.beginPath();
+            g.arc(p.x, p.y, 6, 0, 7);
+            g.fill();
+          });
+          g.globalAlpha = 1;
+        });
+      }
+
+      // Um balão = elipse + brilho + nozinho (triângulo) + barbante (curva de Bézier) + número com contorno. globalAlpha deixa o balão errado desaparecer aos poucos.
+      function drawBalloon(g, b) {
+        const x = b.dx,
+          r = b.r;
+        g.save();
+        g.globalAlpha = Math.max(0, b.alpha);
+        g.strokeStyle = "rgba(80,90,120,.6)";
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(x, b.y + r * 1.2);
+        g.bezierCurveTo(x - 10, b.y + r * 1.2 + 20, x + 10, b.y + r * 1.2 + 30, x, b.y + r * 1.2 + 50);
+        g.stroke();
+        if (b.hint) {
+          g.shadowColor = "#fff200";
+          g.shadowBlur = 36;
+        }
+        g.fillStyle = b.c;
+        g.beginPath();
+        g.ellipse(x, b.y, r, r * 1.18, 0, 0, 7);
+        g.fill();
+        g.shadowBlur = 0;
+        g.fillStyle = "rgba(255,255,255,.35)";
+        g.beginPath();
+        g.ellipse(x - r * 0.35, b.y - r * 0.45, r * 0.18, r * 0.3, 0.5, 0, 7);
+        g.fill();
+        g.fillStyle = b.c;
+        g.beginPath();
+        g.moveTo(x, b.y + r * 1.15);
+        g.lineTo(x - 7, b.y + r * 1.32);
+        g.lineTo(x + 7, b.y + r * 1.32);
+        g.closePath();
+        g.fill();
+        g.fillStyle = "#fff";
+        g.strokeStyle = "rgba(0,0,0,.35)";
+        g.lineWidth = 5;
+        g.font = '900 34px "Trebuchet MS",sans-serif';
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.strokeText(b.t, x, b.y);
+        g.fillText(b.t, x, b.y);
+        g.restore();
+      }
+
+      /* ===================== 🌙 PAUSA ===================== */
+      // Respiração guiada: o círculo cresce (inspire), segura e encolhe (solte). Um ciclo dura 12s: 4s inspirando, 2s segurando e 6s soltando o ar devagar.
+      function renderPausa(stage) {
+        const m = MODS.pausa,
+          { body } = shell(stage, m, { noLevels: true, noDots: true });
+        body.style.setProperty("--c", m.color);
+        body.innerHTML = `<div class="story">Siga o círculo com os olhos e respire com ele 💙</div><div style="text-align:center"><canvas id="pc"></canvas></div><div class="story" id="ptxt" style="margin-top:10px">&nbsp;</div><div class="tools"><span class="pill" id="ptm">1:00</span><button class="bigbtn ghost" id="pback">🏠 Voltar ao início</button></div>`;
+        const cv = $("#pc", body),
+          g = cv.getContext("2d");
+        let W = 600,
+          H = 380,
+          el_ = 0,
+          finished = false,
+          bub = [];
+        function fit() {
+          W = Math.max(300, Math.min(760, body.clientWidth - 8));
+          H = Math.max(300, Math.min(440, Math.round(innerHeight * 0.5)));
+          const d = window.devicePixelRatio || 1;
+          cv.style.width = W + "px";
+          cv.style.height = H + "px";
+          cv.width = Math.round(W * d);
+          cv.height = Math.round(H * d);
+          g.setTransform(d, 0, 0, d, 0, 0);
+        }
+        fit();
+        onResize = fit;
+        const stars = Array.from({ length: 40 }, () => ({
+          x: Math.random(),
+          y: Math.random(),
+          p: Math.random() * 6,
+        }));
+        cv.addEventListener("pointerdown", (e) => {
+          const r = cv.getBoundingClientRect(),
+            mx = e.clientX - r.left,
+            my = e.clientY - r.top;
+          for (let i = bub.length - 1; i >= 0; i--) {
+            const b = bub[i];
+            if (Math.hypot(mx - b.x, my - b.y) < b.r + 6) {
+              bub.splice(i, 1);
+              SFX.softpop();
+              break;
+            }
+          }
+        });
+        $("#pback", body).onclick = () => go("home");
+        loop((dt, now) => {
+          el_ += dt;
+
+          // "%" (resto) faz o tempo voltar a 0 a cada 12 segundos, repetindo o ciclo para sempre. Os 3 if/else escolhem a fase e o texto.
+          const cyc = el_ % 12;
+          let p, label;
+          if (cyc < 4) {
+            p = cyc / 4;
+            label = "Inspire pelo nariz… devagarinho";
+          } else if (cyc < 6) {
+            p = 1;
+            label = "Segure um pouquinho…";
+          } else {
+            p = 1 - (cyc - 6) / 6;
+            label = "Solte o ar pela boca… bem lento";
+          }
+
+          // Suavização com cosseno: 0,5 − 0,5·cos(π·p) vai de 0 a 1 devagarinho no começo e no fim, como um fôlego de verdade.
+          const ease = 0.5 - 0.5 * Math.cos(Math.PI * p),
+            rad = 50 + ease * Math.min(W, H) * 0.26;
+          g.clearRect(0, 0, W, H);
+          stars.forEach((s) => {
+            g.globalAlpha = 0.3 + 0.3 * Math.sin(now / 900 + s.p);
+            g.fillStyle = "#fff";
+            g.beginPath();
+            g.arc(s.x * W, s.y * H, 1.8, 0, 7);
+            g.fill();
+          });
+          g.globalAlpha = 1;
+          const cx = W / 2,
+            cy = H / 2,
+            gr = g.createRadialGradient(cx, cy, rad * 0.2, cx, cy, rad * 1.5);
+          gr.addColorStop(0, "rgba(155,231,255,.95)");
+          gr.addColorStop(0.55, "rgba(91,141,239,.75)");
+          gr.addColorStop(1, "rgba(91,141,239,0)");
+          g.fillStyle = gr;
+          g.beginPath();
+          g.arc(cx, cy, rad * 1.5, 0, 7);
+          g.fill();
+          g.fillStyle = "rgba(255,255,255,.85)";
+          g.beginPath();
+          g.arc(cx, cy, rad, 0, 7);
+          g.fill();
+          if (Math.random() < dt * 1.4 && bub.length < 12)
+            bub.push({
+              x: Math.random() * W,
+              y: H + 30,
+              r: rnd(14, 30),
+              v: rnd(18, 40),
+              ph: Math.random() * 6,
+            });
+          bub.forEach((b) => {
+            b.y -= b.v * dt;
+            b.x += Math.sin(now / 800 + b.ph) * 0.3;
+          });
+          bub = bub.filter((b) => b.y > -40);
+          bub.forEach((b) => {
+            g.strokeStyle = "rgba(180,230,255,.8)";
+            g.lineWidth = 3;
+            g.fillStyle = "rgba(180,230,255,.15)";
+            g.beginPath();
+            g.arc(b.x, b.y, b.r, 0, 7);
+            g.fill();
+            g.stroke();
+          });
+          $("#ptxt", body).textContent = finished ? "Pausa completa! Descansar também é aprender 💙" : label;
+          const left = Math.max(0, 60 - Math.floor(el_));
+          $("#ptm", body).textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+          if (el_ >= 60 && !finished) {
+            finished = true;
+            markDone("pausa");
+            S.stars++;
+            save();
+            updateStars();
+            confetti(60);
+            SFX.good();
+            say("Pausa completa! Você ganhou uma estrela por descansar.", "cheer");
+          }
+        });
+      }
+
+      /* ===================== 🏠 INÍCIO ===================== */
+      // A tela inicial é montada com o mesmo estilo das outras: HTML em template literal, depois criamos os botões do plano e os cartões com um laço forEach.
+      function renderHome(stage) {
+        stage.innerHTML = "";
+        const h = new Date().getHours(),
+          gr = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+        const w = el("div", "home");
+        w.innerHTML = `<div class="hello"><h1>${gr}, ${S.name ? esc(S.name) : "amigo"}! 👋</h1><p>Hoje temos um plano pequeno, só com 3 passos. Um de cada vez, sem pressa!</p></div>
+  <h2 class="sec">📅 Meu plano de hoje</h2><div class="plan" id="plan"></div>
+  <h2 class="sec">🎮 Escolha uma aventura</h2><div class="cards" id="cards"></div>
+  <h2 class="sec">🏅 Minhas conquistas</h2><div id="ach"></div>`;
+        stage.append(w);
+        PLANS[new Date().getDay()].forEach((id, i) => {
+          const m = MODS[id],
+            d = isDone(id);
+          const b = el(
+            "button",
+            "step" + (d ? " done" : ""),
+            `<div class="stnum">Passo ${i + 1}</div><div class="stic">${m.icon}</div><div>${m.name}</div><div>${d ? "✅ Feito!" : "▶ Vamos"}</div>`,
+          );
+          b.style.setProperty("--c", m.color);
+          b.onclick = () => {
+            SFX.click();
+            go(id);
+          };
+          $("#plan", w).append(b);
+        });
+        ["soma", "sub", "mult", "div", "ouro", "tab", "bal", "pausa"].forEach((id) => {
+          const m = MODS[id],
+            c = el("button", "card", `<div class="ic">${m.icon}</div><h3>${m.title}</h3><p>${m.desc}</p>`);
+          c.style.setProperty("--c", m.color);
+          c.onclick = () => {
+            SFX.click();
+            go(id);
+          };
+          $("#cards", w).append(c);
+        });
+        const next = ACH.find((a) => S.stars < a[0]),
+          prev = [...ACH].reverse().find((a) => S.stars >= a[0]);
+        const base = prev ? prev[0] : 0;
+        $("#ach", w).innerHTML =
+          `<div class="achs">${ACH.map((a) => `<div class="ach ${S.stars >= a[0] ? "" : "lock"}">${a[1]} ${a[2]} <small>(${a[0]}⭐)</small></div>`).join("")}</div>` +
+          (next
+            ? `<div class="progress" aria-label="Progresso até a próxima conquista"><i style="width:${Math.round(((S.stars - base) / (next[0] - base)) * 100)}%"></i></div><p style="font-weight:700;color:var(--soft)">Faltam <b>${next[0] - S.stars}</b> estrelas para: ${next[1]} ${next[2]}</p>`
+            : `<p style="font-weight:800">Você é um Super Mestre dos Números! 🎉</p>`);
+      }
+
+      /* ===================== Ajustes ===================== */
+      // A janelinha de ajustes. Cada interruptor guarda o nome da opção em data-k; um único trecho de código liga todos (S[k] = !S[k] inverte verdadeiro/falso).
+      function openSettings() {
+        const d = $("#settings");
+        const row = (label, key) =>
+          `<div class="set"><span>${label}</span><button class="switch ${S[key] ? "on" : ""}" data-k="${key}" role="switch" aria-checked="${!!S[key]}" aria-label="${label}"></button></div>`;
+        d.innerHTML = `<h2>⚙️ Ajustes</h2>
+  <div class="set"><span>Meu nome</span><input id="nm" maxlength="14" value="${esc(S.name || "")}" style="font:inherit;padding:6px 10px;border-radius:12px;border:3px solid #d3d9ee;width:150px"></div>
+  ${row("🔊 Sons", "sound")}${row("🗣️ Ler em voz alta", "voice")}${row("🌙 Modo calmo (menos movimento)", "calm")}
+  <div class="set"><span>🔠 Tamanho das letras</span><span><button class="tool" id="fm">A−</button> <button class="tool" id="fp">A+</button></span></div>
+  <div class="set"><span>Zerar estrelas e progresso</span><button class="tool" id="rst">Zerar</button></div>
+  <div class="dlgbtns"><button class="bigbtn" id="sclose">Pronto!</button></div>`;
+        d.querySelectorAll(".switch").forEach(
+          (sw) =>
+            (sw.onclick = () => {
+              const k = sw.dataset.k;
+              S[k] = !S[k];
+              sw.classList.toggle("on", S[k]);
+              sw.setAttribute("aria-checked", S[k]);
+              save();
+              applyPrefs();
+              if (k === "sound" && S.sound) SFX.good();
+              if (k === "voice" && S.voice) speak("Agora eu vou ler em voz alta!");
+            }),
+        );
+        $("#nm", d).oninput = (e) => {
+          S.name = e.target.value.trim();
+          save();
+        };
+        $("#fm", d).onclick = () => {
+          S.fs = Math.max(16, S.fs - 2);
+          save();
+          applyPrefs();
+        };
+        $("#fp", d).onclick = () => {
+          S.fs = Math.min(28, S.fs + 2);
+          save();
+          applyPrefs();
+        };
+        $("#rst", d).onclick = () => {
+          if (confirm("Zerar todas as estrelas e o progresso?")) {
+            S.stars = 0;
+            S.levels = {};
+            S.doneToday = {};
+            save();
+            updateStars();
+            Object.keys(R).forEach((k) => (R[k] = 0));
+          }
+        };
+        $("#sclose", d).onclick = () => {
+          d.close();
+          if (S.cur === "home") go("home");
+        };
+        d.showModal();
+      }
+
+      /* ===================== Início do app ===================== */
+      // A LARGADA: roda uma vez quando a página abre. Carrega o progresso, cria as abas
+      // a partir do MODS, liga os botões do cabeçalho, escuta o redimensionar da janela
+      // e mostra a tela inicial.
+      function init() {
+        load();
+        applyPrefs();
+        sizeCanvases();
+        bgLoop();
+        updateStars();
+        const nav = $("#tabs");
+        Object.values(MODS).forEach((m) => {
+          const t = el("button", "tab", `<span class="ic">${m.icon}</span><span>${m.name}</span>`);
+          t.dataset.id = m.id;
+          t.style.setProperty("--c", m.color);
+          t.onclick = () => {
+            SFX.click();
+            S.cur = m.id;
+            go(m.id);
+          };
+          nav.append(t);
+        });
+        $("#settingsBtn").onclick = openSettings;
+        $("#calmBtn").onclick = () => {
+          S.cur = "pausa";
+          go("pausa");
+        };
+        $("#speakBtn").onclick = () => {
+          ac();
+          speak(lastSaid);
+        };
+        document.addEventListener("pointerdown", () => ac());
+        window.addEventListener("resize", () => {
+          sizeCanvases();
+          onResize && onResize();
+        });
+        S.cur = "home";
+        go("home");
+        const h = new Date().getHours();
+        say(
+          `${h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"}${S.name ? ", " + S.name : ""}! Eu sou o Zeca. Vamos aprender brincando?`,
+          "cheer",
+        );
+      }
+
+      // Chamada que dá a partida em tudo. (Fica por último porque as funções acima precisam já existir.)
+      init();
+    </script>
+  </body>
+</html>

@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/33292591/README.md)
 # 🤖 Mundo dos Números com o Zeca
 
 > **Aprender matemática brincando.**
